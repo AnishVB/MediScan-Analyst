@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MediScan Analyst - Medical Image Analysis</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #0f0f1e;
+        color: #e0e0e0;
+        min-height: 100vh;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* HEADER */
+      header {
+        background: linear-gradient(135deg, #1a1a3e 0%, #2d1b69 100%);
+        padding: 20px 30px;
+        border-bottom: 1px solid #3a3a5c;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      header h1 {
+        font-size: 24px;
+        color: #a78bfa;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .user-info {
+        color: #b0b0b0;
+        font-size: 13px;
+        text-align: right;
+      }
+
+      .user-info .patient-name {
+        color: #a78bfa;
+        font-weight: bold;
+        font-size: 14px;
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-secondary {
+        background: #2a2a4e;
+        border: 1px solid #3a3a5c;
+      }
+
+      .btn-secondary:hover {
+        background: #3a3a5c;
+        box-shadow: none;
+      }
+
+      /* MAIN CONTENT */
+      .content {
+        flex: 1;
+        padding: 30px;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      /* ========= PAGE: HOME ========= */
+      #homePage {
+        display: none;
+      }
+
+      .patient-section {
+        background: #1a1a2e;
+        border-radius: 10px;
+        padding: 30px;
+        margin-bottom: 30px;
+        border: 1px solid #3a3a5c;
+      }
+
+      .patient-section h2 {
+        color: #a78bfa;
+        margin-bottom: 20px;
+        font-size: 20px;
+        border-bottom: 2px solid #3a3a5c;
+        padding-bottom: 15px;
+      }
+
+      .search-box {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .search-box input {
+        flex: 1;
+        background: #2a2a4e;
+        border: 1px solid #3a3a5c;
+        color: #e0e0e0;
+        padding: 12px;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+
+      .search-box input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+      }
+
+      .search-box button {
+        padding: 12px 20px;
+      }
+
+      .patient-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .patient-card {
+        background: #2a2a4e;
+        border: 1px solid #3a3a5c;
+        border-radius: 8px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .patient-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        transform: translateY(-2px);
+      }
+
+      .patient-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 15px;
+      }
+
+      .patient-card h3 {
+        color: #a78bfa;
+        font-size: 16px;
+      }
+
+      .patient-card-badge {
+        background: #667eea;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+      }
+
+      .patient-card-info {
+        color: #b0b0b0;
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+
+      .patient-card-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: auto;
+      }
+
+      .patient-card-actions button {
+        flex: 1;
+        padding: 8px;
+        font-size: 12px;
+      }
+
+      .add-patient-form {
+        background: #2a2a4e;
+        border: 1px solid #3a3a5c;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        display: block;
+        color: #a78bfa;
+        margin-bottom: 5px;
+        font-size: 13px;
+        font-weight: bold;
+      }
+
+      .form-group input {
+        width: 100%;
+        background: #1a1a2e;
+        border: 1px solid #3a3a5c;
+        color: #e0e0e0;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 13px;
+      }
+
+      /* ========= PAGE: ANALYSIS ========= */
+      #analysisPage {
+        display: none;
+      }
+
+      .analysis-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+      }
+
+      .card {
+        background: #1a1a2e;
+        border: 1px solid #3a3a5c;
+        border-radius: 10px;
+        padding: 25px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      .card h2 {
+        color: #a78bfa;
+        margin-bottom: 20px;
+        font-size: 18px;
+        border-bottom: 2px solid #3a3a5c;
+        padding-bottom: 10px;
+      }
+
+      .upload-area {
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: rgba(102, 126, 234, 0.1);
+      }
+
+      .upload-area:hover {
+        background: rgba(102, 126, 234, 0.15);
+        border-color: #764ba2;
+      }
+
+      .upload-area.dragover {
+        background: rgba(102, 126, 234, 0.2);
+        border-color: #764ba2;
+        transform: scale(1.02);
+      }
+
+      .upload-area svg {
+        width: 50px;
+        height: 50px;
+        color: #667eea;
+        margin-bottom: 15px;
+      }
+
+      .upload-area p {
+        color: #b0b0b0;
+        margin: 10px 0;
+      }
+
+      .upload-area .hint {
+        font-size: 12px;
+        color: #808080;
+      }
+
+      #imageInput {
+        display: none;
+      }
+
+      #imagePreview {
+        display: none;
+        width: 100%;
+        border-radius: 8px;
+        margin-top: 20px;
+        max-height: 400px;
+        object-fit: contain;
+        border: 1px solid #3a3a5c;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 40px 20px;
+      }
+
+      .spinner {
+        border: 4px solid #3a3a5c;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .status-section {
+        background: #2a2a4e;
+        border-left: 3px solid #667eea;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+      }
+
+      .status-section h3 {
+        color: #a78bfa;
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+
+      .status-section p {
+        color: #b0b0b0;
+        font-size: 13px;
+      }
+
+      .results {
+        display: none;
+      }
+
+      .full-width {
+        grid-column: 1 / -1;
+      }
+
+      .finding-item {
+        background: #2a2a4e;
+        padding: 15px;
+        margin-bottom: 12px;
+        border-radius: 5px;
+        border-left: 3px solid #667eea;
+      }
+
+      .finding-type {
+        font-weight: bold;
+        color: #a78bfa;
+        margin-bottom: 5px;
+      }
+
+      .finding-location {
+        color: #667eea;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .finding-desc {
+        color: #b0b0b0;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+
+      .confidence-bar {
+        margin-top: 10px;
+        background: #1a1a2e;
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .confidence-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+      }
+
+      .hypothesis-card {
+        background: #2a2a4e;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        border: 1px solid #3a3a5c;
+      }
+
+      .hypothesis-card h4 {
+        color: #a78bfa;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .confidence-score {
+        background: #667eea;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: bold;
+      }
+
+      .severity {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        margin-top: 8px;
+      }
+
+      .severity.high {
+        background: rgba(220, 38, 38, 0.2);
+        color: #ff6b6b;
+      }
+
+      .severity.medium {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+      }
+
+      .severity.low {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+      }
+
+      .recommendations {
+        background: #2a2a4e;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 15px;
+      }
+
+      .recommendations h4 {
+        color: #a78bfa;
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
+
+      .recommendations ul {
+        list-style: none;
+      }
+
+      .recommendations li {
+        padding: 8px 0;
+        color: #b0b0b0;
+        font-size: 13px;
+        border-bottom: 1px solid #3a3a5c;
+      }
+
+      .recommendations li:last-child {
+        border-bottom: none;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .button-group button {
+        flex: 1;
+      }
+
+      .error-message {
+        background: rgba(220, 38, 38, 0.2);
+        border-left: 3px solid #ff6b6b;
+        padding: 12px;
+        border-radius: 5px;
+        color: #ff6b6b;
+        margin-bottom: 20px;
+        display: none;
+        font-size: 13px;
+      }
+
+      .success-message {
+        background: rgba(34, 197, 94, 0.2);
+        border-left: 3px solid #4ade80;
+        padding: 12px;
+        border-radius: 5px;
+        color: #4ade80;
+        margin-bottom: 20px;
+        display: none;
+        font-size: 13px;
+      }
+
+      @media (max-width: 1024px) {
+        .analysis-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- HEADER -->
+      <header>
+        <h1>🩺 MediScan Analyst</h1>
+        <div class="header-right">
+          <div class="user-info">
+            <div>Current Patient:</div>
+            <div class="patient-name" id="currentPatientDisplay">
+              None Selected
+            </div>
+          </div>
+          <button class="btn btn-secondary" id="backBtn" style="display: none">
+            ← Back to Patients
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- ========= PAGE: HOME (PATIENT SELECTION) ========= -->
+        <div id="homePage">
+          <div class="patient-section">
+            <h2>👥 Patient Management</h2>
+
+            <div class="search-box">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search by name, MRN, or DOB..."
+              />
+              <button class="btn" onclick="searchPatients()">🔍 Search</button>
+              <button class="btn btn-secondary" onclick="toggleAddPatient()">
+                ➕ Add New Patient
+              </button>
+            </div>
+
+            <div id="patientListContainer" class="patient-list"></div>
+
+            <div
+              id="addPatientForm"
+              style="display: none"
+              class="add-patient-form"
+            >
+              <h3 style="color: #a78bfa; margin-bottom: 15px">
+                Register New Patient
+              </h3>
+
+              <div
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px"
+              >
+                <div class="form-group">
+                  <label>Full Name</label>
+                  <input
+                    type="text"
+                    id="newPatientName"
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>MRN</label>
+                  <input
+                    type="text"
+                    id="newPatientMRN"
+                    placeholder="MRN-12345"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Date of Birth</label>
+                  <input type="date" id="newPatientDOB" />
+                </div>
+                <div class="form-group">
+                  <label>Age</label>
+                  <input type="number" id="newPatientAge" placeholder="30" />
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 10px; margin-top: 15px">
+                <button class="btn" style="flex: 1" onclick="addNewPatient()">
+                  ✓ Register Patient
+                </button>
+                <button
+                  class="btn btn-secondary"
+                  style="flex: 1"
+                  onclick="toggleAddPatient()"
+                >
+                  ✕ Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========= PAGE: IMAGE ANALYSIS ========= -->
+        <div id="analysisPage">
+          <div class="analysis-grid">
+            <!-- LEFT: UPLOAD -->
+            <div class="card">
+              <h2>📤 Upload Scan</h2>
+
+              <div class="upload-area" id="uploadArea">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                <p><strong>Click to upload</strong> or drag and drop</p>
+                <p class="hint">PNG, JPG, JPEG (up to 50MB)</p>
+              </div>
+
+              <img id="imagePreview" />
+              <input type="file" id="imageInput" accept="image/*" />
+            </div>
+
+            <!-- RIGHT: STATUS -->
+            <div class="card">
+              <h2>⚙️ Pipeline Status</h2>
+
+              <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p><strong>Processing through 3-Agent Pipeline...</strong></p>
+                <p style="color: #808080; margin-top: 10px; font-size: 12px">
+                  👁️ Vision → 🧠 Analysis → 📋 Reporting
+                </p>
+              </div>
+
+              <div id="statusInfo" style="display: none">
+                <div class="status-section">
+                  <h3>✅ Analysis Complete</h3>
+                  <p>Results are ready for review below</p>
+                </div>
+              </div>
+
+              <div
+                id="initialMessage"
+                style="color: #808080; text-align: center; padding: 60px 20px"
+              >
+                <p>Upload a medical image to begin analysis</p>
+              </div>
+            </div>
+
+            <!-- RESULTS -->
+            <div class="results" id="results">
+              <!-- VISION FINDINGS -->
+              <div class="card full-width">
+                <h2>👁️ Vision Agent: Image Analysis</h2>
+                <div id="visionFindings"></div>
+              </div>
+
+              <!-- ANALYSIS HYPOTHESES -->
+              <div class="card full-width">
+                <h2>🧠 Analysis Agent: Medical Reasoning</h2>
+                <div id="analysisResults"></div>
+              </div>
+
+              <!-- DIAGNOSTIC REPORT -->
+              <div class="card full-width">
+                <h2>📋 Diagnostic Report</h2>
+                <div id="diagnosticReport"></div>
+
+                <div class="button-group">
+                  <button class="btn" onclick="saveScan()">
+                    💾 Save to Patient Record
+                  </button>
+                  <button class="btn btn-secondary" onclick="resetAnalysis()">
+                    🔄 New Analysis
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="error-message" id="errorMessage"></div>
+          <div class="success-message" id="successMessage"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_URL = "http://localhost:8000";
+      let currentPatient = null;
+      let currentAnalysis = null;
+      let patients = JSON.parse(localStorage.getItem("patients")) || [];
+
+      // ========== PATIENT MANAGEMENT ==========
+      function populatePatientList(patientList = patients) {
+        const container = document.getElementById("patientListContainer");
+
+        if (patientList.length === 0) {
+          container.innerHTML =
+            '<p style="grid-column: 1/-1; color: #808080; text-align: center; padding: 40px;">No patients found</p>';
+          return;
+        }
+
+        container.innerHTML = patientList
+          .map(
+            (p) => `
+                <div class="patient-card">
+                    <div class="patient-card-header">
+                        <div>
+                            <h3>${p.name}</h3>
+                            <div class="patient-card-info">${p.mrn}</div>
+                        </div>
+                        <div class="patient-card-badge">${p.scans ? p.scans.length : 0} Scans</div>
+                    </div>
+                    <div class="patient-card-info">
+                        <div>Age: ${p.age}</div>
+                        <div>DOB: ${p.dob}</div>
+                    </div>
+                    <div class="patient-card-actions">
+                        <button class="btn" onclick="selectPatient('${p.mrn}')">📊 Analyze</button>
+                        <button class="btn btn-secondary" onclick="deletePatient('${p.mrn}')">🗑️</button>
+                    </div>
+                </div>
+            `,
+          )
+          .join("");
+      }
+
+      function selectPatient(mrn) {
+        currentPatient = patients.find((p) => p.mrn === mrn);
+        document.getElementById("currentPatientDisplay").textContent =
+          `${currentPatient.name} (${currentPatient.mrn})`;
+        document.getElementById("homePage").style.display = "none";
+        document.getElementById("analysisPage").style.display = "block";
+        document.getElementById("backBtn").style.display = "block";
+        resetAnalysis();
+      }
+
+      function toggleAddPatient() {
+        const form = document.getElementById("addPatientForm");
+        form.style.display = form.style.display === "none" ? "block" : "none";
+      }
+
+      function addNewPatient() {
+        const name = document.getElementById("newPatientName").value;
+        const mrn = document.getElementById("newPatientMRN").value;
+        const dob = document.getElementById("newPatientDOB").value;
+        const age = document.getElementById("newPatientAge").value;
+
+        if (!name || !mrn || !dob || !age) {
+          alert("Please fill all fields");
+          return;
+        }
+
+        const patient = {
+          name,
+          mrn,
+          dob,
+          age,
+          scans: [],
+          createdAt: new Date().toISOString(),
+        };
+        patients.push(patient);
+        localStorage.setItem("patients", JSON.stringify(patients));
+
+        populatePatientList();
+        document.getElementById("addPatientForm").style.display = "none";
+        document.getElementById("newPatientName").value = "";
+        document.getElementById("newPatientMRN").value = "";
+        document.getElementById("newPatientDOB").value = "";
+        document.getElementById("newPatientAge").value = "";
+      }
+
+      function deletePatient(mrn) {
+        if (confirm("Delete this patient? This action cannot be undone.")) {
+          patients = patients.filter((p) => p.mrn !== mrn);
+          localStorage.setItem("patients", JSON.stringify(patients));
+          populatePatientList();
+        }
+      }
+
+      function searchPatients() {
+        const query = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        const filtered = patients.filter(
+          (p) =>
+            p.name.toLowerCase().includes(query) ||
+            p.mrn.toLowerCase().includes(query) ||
+            p.dob.includes(query),
+        );
+        populatePatientList(filtered);
+      }
+
+      // ========== IMAGE UPLOAD ==========
+      const uploadArea = document.getElementById("uploadArea");
+      const imageInput = document.getElementById("imageInput");
+      const imagePreview = document.getElementById("imagePreview");
+
+      uploadArea.addEventListener("click", () => imageInput.click());
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+      });
+      uploadArea.addEventListener("dragleave", () =>
+        uploadArea.classList.remove("dragover"),
+      );
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        if (e.dataTransfer.files.length)
+          handleImageSelect(e.dataTransfer.files[0]);
+      });
+
+      imageInput.addEventListener("change", (e) => {
+        if (e.target.files.length) handleImageSelect(e.target.files[0]);
+      });
+
+      function handleImageSelect(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          imagePreview.src = e.target.result;
+          imagePreview.style.display = "block";
+
+          // Auto-analyze
+          analyzeImage(file);
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // ========== IMAGE ANALYSIS ==========
+      async function analyzeImage(file) {
+        const loading = document.getElementById("loading");
+        const results = document.getElementById("results");
+        const errorMessage = document.getElementById("errorMessage");
+
+        loading.style.display = "block";
+        results.style.display = "none";
+        errorMessage.style.display = "none";
+        document.getElementById("initialMessage").style.display = "none";
+        document.getElementById("statusInfo").style.display = "none";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("patient_id", currentPatient.mrn);
+
+        try {
+          const response = await fetch(`${API_URL}/api/analyze`, {
+            method: "POST",
+            body: formData,
+          });
+          if (!response.ok) throw new Error("Analysis failed");
+
+          currentAnalysis = await response.json();
+
+          displayVisionFindings(currentAnalysis.findings);
+          displayAnalysisResults(currentAnalysis.hypotheses);
+          displayDiagnosticReport(currentAnalysis.report);
+
+          document.getElementById("statusInfo").style.display = "block";
+          loading.style.display = "none";
+          results.style.display = "block";
+        } catch (error) {
+          errorMessage.textContent = `❌ Error: ${error.message}`;
+          errorMessage.style.display = "block";
+          loading.style.display = "none";
+        }
+      }
+
+      function displayVisionFindings(findings) {
+        const container = document.getElementById("visionFindings");
+        container.innerHTML = findings
+          .map(
+            (f) => `
+                <div class="finding-item">
+                    <div class="finding-type">🔍 ${f.finding_type}</div>
+                    <div class="finding-location">${f.location}</div>
+                    <div class="finding-desc">${f.description}</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${f.confidence * 100}%"></div>
+                    </div>
+                    <div style="font-size: 11px; color: #808080; margin-top: 5px;">Confidence: ${(f.confidence * 100).toFixed(0)}%</div>
+                </div>
+            `,
+          )
+          .join("");
+      }
+
+      function displayAnalysisResults(hypotheses) {
+        const container = document.getElementById("analysisResults");
+        container.innerHTML = hypotheses
+          .map(
+            (h, idx) => `
+                <div class="hypothesis-card">
+                    <h4>
+                        ${idx === 0 ? "🎯 Primary" : "📌 Alternative"} ${h.condition}
+                        <span class="confidence-score">${(h.confidence_score * 100).toFixed(0)}%</span>
+                    </h4>
+                    <p style="color: #b0b0b0; font-size: 12px; margin-bottom: 10px;">${h.reasoning_path}</p>
+                    <span class="severity ${h.severity_level.toLowerCase()}">Risk: ${h.severity_level}</span>
+                </div>
+            `,
+          )
+          .join("");
+      }
+
+      function displayDiagnosticReport(report) {
+        const container = document.getElementById("diagnosticReport");
+        const primary = report.primary_hypothesis;
+
+        container.innerHTML = `
+                <div style="margin-bottom: 15px; padding: 15px; background: #2a2a4e; border-radius: 5px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <p style="color: #808080; font-size: 11px;">Patient ID</p>
+                            <p style="color: #a78bfa; font-weight: bold;">${report.patient_id}</p>
+                        </div>
+                        <div>
+                            <p style="color: #808080; font-size: 11px;">Timestamp</p>
+                            <p style="color: #a78bfa; font-weight: bold;">${new Date(report.timestamp).toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div><p style="color: #b0b0b0; line-height: 1.6;">${report.clinical_summary}</p></div>
+
+                <div style="margin-top: 15px; padding: 15px; background: #2a2a4e; border-left: 3px solid #667eea; border-radius: 5px;">
+                    <p style="font-weight: bold; color: #a78bfa; margin-bottom: 8px;">${primary.condition}</p>
+                    <p style="font-size: 12px; color: #b0b0b0; margin-bottom: 10px;">${primary.clinical_significance}</p>
+                    <span class="confidence-score">${(primary.confidence_score * 100).toFixed(0)}%</span>
+                    <span class="severity ${primary.severity_level.toLowerCase()}" style="margin-left: 8px;">Risk: ${primary.severity_level}</span>
+                </div>
+
+                <div class="recommendations">
+                    <h4>💡 Recommendations</h4>
+                    <ul>${report.recommendations.map((r) => `<li>${r}</li>`).join("")}</ul>
+                </div>
+
+                <div style="margin-top: 15px; padding: 12px; background: rgba(255, 107, 107, 0.1); border-left: 3px solid #ff6b6b; border-radius: 5px;">
+                    <p style="font-size: 11px; color: #b0b0b0;">
+                        ⚠️ This AI-generated analysis must be verified by a licensed radiologist before clinical use.
+                    </p>
+                </div>
+            `;
+      }
+
+      async function saveScan() {
+        if (!currentAnalysis || !currentPatient) return;
+
+        const patientIdx = patients.findIndex(
+          (p) => p.mrn === currentPatient.mrn,
+        );
+        if (patientIdx === -1) return;
+
+        if (!patients[patientIdx].scans) patients[patientIdx].scans = [];
+
+        patients[patientIdx].scans.push({
+          timestamp: new Date().toISOString(),
+          analysis: currentAnalysis,
+          status: "pending_approval",
+        });
+
+        localStorage.setItem("patients", JSON.stringify(patients));
+
+        const msg = document.getElementById("successMessage");
+        msg.textContent = `✓ Scan saved to ${currentPatient.name}'s record!`;
+        msg.style.display = "block";
+
+        setTimeout(() => (msg.style.display = "none"), 3000);
+      }
+
+      function resetAnalysis() {
+        imageInput.value = "";
+        imagePreview.style.display = "none";
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("statusInfo").style.display = "none";
+        document.getElementById("initialMessage").style.display = "block";
+        document.getElementById("results").style.display = "none";
+      }
+
+      document.getElementById("backBtn").addEventListener("click", () => {
+        currentPatient = null;
+        currentAnalysis = null;
+        document.getElementById("analysisPage").style.display = "none";
+        document.getElementById("homePage").style.display = "block";
+        document.getElementById("currentPatientDisplay").textContent =
+          "None Selected";
+        document.getElementById("backBtn").style.display = "none";
+        resetAnalysis();
+        populatePatientList();
+      });
+
+      // Initialize
+      document.getElementById("homePage").style.display = "block";
+      populatePatientList();
+    </script>
+  </body>
+</html>
