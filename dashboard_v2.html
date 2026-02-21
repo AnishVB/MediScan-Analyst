@@ -613,19 +613,25 @@
         <nav class="nav-menu">
           <li class="nav-item">
             <a class="nav-link active" onclick="showPage('dashboard', this)">
-              <div class="nav-icon">▪</div>
+              <div class="nav-icon">⬚</div>
               <span>Dashboard</span>
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link" onclick="showPage('patients', this)">
-              <div class="nav-icon">👤</div>
+              <div class="nav-icon">👥</div>
               <span>Patients</span>
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link" onclick="showPage('analysis', this)">
+              <div class="nav-icon">🔬</div>
+              <span>Analysis</span>
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link" onclick="showPage('reports', this)">
-              <div class="nav-icon">□</div>
+              <div class="nav-icon">📋</div>
               <span>Reports</span>
             </a>
           </li>
@@ -794,159 +800,17 @@
             </div>
           </div>
 
-          <!-- PAGE: PATIENT PROFILE -->
-          <div id="profile" class="page">
-            <div class="page-title">Patient Profile</div>
-            <div style="margin-top: 30px">
-              <div class="card">
-                <div
-                  style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: start;
-                    margin-bottom: 20px;
-                  "
-                >
-                  <div>
-                    <div
-                      style="
-                        font-size: 24px;
-                        font-weight: bold;
-                        color: #2c3e50;
-                        margin-bottom: 10px;
-                      "
-                      id="profileName"
-                    >
-                      -
-                    </div>
-                    <div
-                      style="
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 20px;
-                        font-size: 13px;
-                        color: #7f8c8d;
-                      "
-                    >
-                      <div>
-                        <div
-                          style="
-                            font-weight: 600;
-                            color: #2c3e50;
-                            margin-bottom: 5px;
-                          "
-                        >
-                          MRN
-                        </div>
-                        <div id="profileMRN">-</div>
-                      </div>
-                      <div>
-                        <div
-                          style="
-                            font-weight: 600;
-                            color: #2c3e50;
-                            margin-bottom: 5px;
-                          "
-                        >
-                          Age
-                        </div>
-                        <div id="profileAge">-</div>
-                      </div>
-                      <div>
-                        <div
-                          style="
-                            font-weight: 600;
-                            color: #2c3e50;
-                            margin-bottom: 5px;
-                          "
-                        >
-                          DOB
-                        </div>
-                        <div id="profileDOB">-</div>
-                      </div>
-                      <div>
-                        <div
-                          style="
-                            font-weight: 600;
-                            color: #2c3e50;
-                            margin-bottom: 5px;
-                          "
-                        >
-                          Total Scans
-                        </div>
-                        <div id="profileScans">0</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div style="display: flex; flex-direction: column; gap: 10px">
-                    <button class="btn btn-primary" onclick="startAnalysis()">
-                      Start New Scan
-                    </button>
-                    <button
-                      class="btn btn-secondary"
-                      onclick="backToPatients()"
-                    >
-                      Back to Patients
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card" style="margin-top: 20px">
-                <div class="card-title">Scan History</div>
-                <div id="profileScanHistory" style="margin-top: 20px">
-                  <div
-                    style="text-align: center; color: #7f8c8d; padding: 20px"
-                  >
-                    No scans found
-                  </div>
-                </div>
-              </div>
-
-              <div class="card" style="margin-top: 20px">
-                <div class="card-title">Notes</div>
-                <div style="margin-top: 20px">
-                  <textarea
-                    id="profileNotes"
-                    placeholder="Add notes about this patient..."
-                    style="
-                      width: 100%;
-                      height: 100px;
-                      padding: 10px;
-                      border: 1px solid #e0e6ed;
-                      border-radius: 6px;
-                      font-family: monospace;
-                      resize: vertical;
-                    "
-                  ></textarea>
-                  <button
-                    class="btn btn-primary"
-                    onclick="savePatientNotes()"
-                    style="margin-top: 10px"
-                  >
-                    Save Notes
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- PAGE: ANALYSIS -->
           <div id="analysis" class="page">
             <div class="page-title">Medical Image Analysis</div>
             <div style="margin-top: 30px">
-              <div style="display: flex; gap: 10px; margin-bottom: 20px">
-                <button class="btn btn-secondary" onclick="backToProfile()">
-                  Back to Patient
-                </button>
-              </div>
               <div class="grid-2">
                 <!-- UPLOAD SECTION -->
                 <div class="card">
                   <div class="card-title">Image Upload</div>
                   <div style="margin-top: 20px">
                     <div class="upload-area" id="uploadArea">
-                      <div class="upload-icon">↑</div>
+                      <div class="upload-icon">▲</div>
                       <div class="upload-text">Click to upload scan image</div>
                       <div class="upload-hint">PNG, JPG, JPEG (up to 50MB)</div>
                     </div>
@@ -1385,98 +1249,16 @@
 
       function selectPatientForAnalysis(mrn) {
         selectedPatitentForAnalysis = mrn;
-        viewPatientProfile(mrn);
+        showPage(
+          "analysis",
+          document.querySelector("[onclick*=\"showPage('analysis'\"]"),
+        );
+        showSuccessMessage("Patient selected for analysis");
       }
 
       function viewPatientProfile(mrn) {
         const patient = patients.find((p) => p.mrn === mrn);
-        if (!patient) {
-          showErrorMessage("Patient not found");
-          return;
-        }
-
-        selectedPatitentForAnalysis = mrn;
-
-        // Update profile display
-        document.getElementById("profileName").textContent = patient.name;
-        document.getElementById("profileMRN").textContent = patient.mrn;
-        document.getElementById("profileAge").textContent = patient.age || "-";
-        document.getElementById("profileDOB").textContent = patient.dob || "-";
-        document.getElementById("profileScans").textContent = patient.scans
-          ? patient.scans.length
-          : 0;
-        document.getElementById("profileNotes").value = patient.notes || "";
-
-        // Show scan history
-        const historyDiv = document.getElementById("profileScanHistory");
-        if (!patient.scans || patient.scans.length === 0) {
-          historyDiv.innerHTML =
-            '<div style="text-align: center; color: #7f8c8d; padding: 20px;">No scans found</div>';
-        } else {
-          historyDiv.innerHTML = patient.scans
-            .map(
-              (scan) => `
-                    <div style="background: #f9fafb; border-left: 4px solid #667eea; padding: 15px; margin-bottom: 10px; border-radius: 6px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="font-weight: 600; color: #2c3e50;">${scan.image_type}</span>
-                            <span style="font-size: 12px; color: #7f8c8d;">${new Date(scan.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div style="font-size: 13px; color: #555;">
-                            <div>Body Part: <strong>${scan.body_part}</strong></div>
-                            <div>Findings: ${scan.analysis?.findings?.length || 0}</div>
-                            <div>Confidence: ${(scan.ensemble_confidence * 100).toFixed(1)}%</div>
-                        </div>
-                    </div>
-                `,
-            )
-            .join("");
-        }
-
-        // Navigate to profile page
-        document.getElementById("profile").classList.add("active");
-        document.getElementById("patients").classList.remove("active");
-        document.getElementById("analysis").classList.remove("active");
-        document.getElementById("reports").classList.remove("active");
-        document.getElementById("dashboard").classList.remove("active");
-        document.getElementById("settings").classList.remove("active");
-        document.getElementById("currentPage").textContent = "Patient Profile";
-      }
-
-      function startAnalysis() {
-        if (!selectedPatitentForAnalysis) {
-          showErrorMessage("No patient selected");
-          return;
-        }
-        document.getElementById("profile").classList.remove("active");
-        document.getElementById("analysis").classList.add("active");
-        document.getElementById("currentPage").textContent =
-          "Medical Image Analysis";
-        resetAnalysis();
-      }
-
-      function savePatientNotes() {
-        if (!selectedPatitentForAnalysis) return;
-        const notes = document.getElementById("profileNotes").value;
-        const patient = patients.find(
-          (p) => p.mrn === selectedPatitentForAnalysis,
-        );
-        if (patient) {
-          patient.notes = notes;
-          localStorage.setItem("patients", JSON.stringify(patients));
-          showSuccessMessage("Notes saved");
-        }
-      }
-
-      function backToPatients() {
-        document.getElementById("profile").classList.remove("active");
-        document.getElementById("patients").classList.add("active");
-        document.getElementById("currentPage").textContent = "Patients";
-      }
-
-      function backToProfile() {
-        document.getElementById("analysis").classList.remove("active");
-        document.getElementById("profile").classList.add("active");
-        document.getElementById("currentPage").textContent = "Patient Profile";
+        console.log("Patient Profile:", patient);
       }
 
       // ANALYSIS
