@@ -899,21 +899,39 @@
 
       function displayVisionFindings(findings) {
         const container = document.getElementById("visionFindings");
-        container.innerHTML = findings
+
+        // Extract body part from first finding (all should have same body part)
+        const bodyPart =
+          findings.length > 0
+            ? findings[0].body_part || findings[0].location
+            : "Unknown";
+
+        const bodyPartSection = `
+          <div style="background: #2a3f5f; border-left: 4px solid #667eea; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+            <div style="font-size: 12px; color: #b0b0b0; margin-bottom: 5px;">📊 BODY PART ANALYZED:</div>
+            <div style="font-size: 18px; font-weight: bold; color: #a78bfa;">${bodyPart}</div>
+          </div>
+        `;
+
+        const findingsHTML = findings
           .map(
             (f) => `
-                <div class="finding-item">
-                    <div class="finding-type">🔍 ${f.finding_type}</div>
-                    <div class="finding-location">${f.location}</div>
-                    <div class="finding-desc">${f.description}</div>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" style="width: ${f.confidence * 100}%"></div>
-                    </div>
-                    <div style="font-size: 11px; color: #808080; margin-top: 5px;">Confidence: ${(f.confidence * 100).toFixed(0)}%</div>
+              <div class="finding-item">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                  <div class="finding-type">🔍 ${f.finding_type}</div>
+                  <div style="font-size: 12px; color: #667eea; font-weight: bold;">${(f.confidence * 100).toFixed(0)}% Confidence</div>
                 </div>
+                <div class="finding-location" style="color: #a78bfa; margin-bottom: 8px;">📍 ${f.location}</div>
+                <div class="finding-desc">${f.description}</div>
+                <div class="confidence-bar">
+                  <div class="confidence-fill" style="width: ${f.confidence * 100}%; ${f.confidence > 0.75 ? "background: #10b981;" : f.confidence > 0.5 ? "background: #f59e0b;" : "background: #ef4444;"}"></div>
+                </div>
+              </div>
             `,
           )
           .join("");
+
+        container.innerHTML = bodyPartSection + findingsHTML;
       }
 
       function displayAnalysisResults(hypotheses) {
@@ -952,10 +970,20 @@
                     </div>
                 </div>
 
-                <div><p style="color: #b0b0b0; line-height: 1.6;">${report.clinical_summary}</p></div>
+                <div style="background: #2a3f5f; border-left: 4px solid #a78bfa; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                    <p style="color: #808080; font-size: 11px; margin-bottom: 8px;">📋 FINDINGS SUMMARY</p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                      ${report.preliminary_findings.map((f) => `<div style="color: #e0e0e0; font-size: 13px;">✓ ${f}</div>`).join("")}
+                    </div>
+                </div>
 
-                <div style="margin-top: 15px; padding: 15px; background: #2a2a4e; border-left: 3px solid #667eea; border-radius: 5px;">
-                    <p style="font-weight: bold; color: #a78bfa; margin-bottom: 8px;">${primary.condition}</p>
+                <div style="padding: 15px; background: #2a2a4e; border-left: 3px solid #667eea; border-radius: 5px; margin-bottom: 15px;">
+                    <p style="color: #b0b0b0; line-height: 1.6;">${report.clinical_summary}</p>
+                </div>
+
+                <div style="margin-bottom: 15px; padding: 15px; background: #2a2a4e; border-left: 3px solid #667eea; border-radius: 5px;">
+                    <p style="font-weight: bold; color: #a78bfa; margin-bottom: 8px;">🎯 PRIMARY ASSESSMENT</p>
+                    <p style="font-size: 14px; color: #e0e0e0; margin-bottom: 8px;">${primary.condition}</p>
                     <p style="font-size: 12px; color: #b0b0b0; margin-bottom: 10px;">${primary.clinical_significance}</p>
                     <span class="confidence-score">${(primary.confidence_score * 100).toFixed(0)}%</span>
                     <span class="severity ${primary.severity_level.toLowerCase()}" style="margin-left: 8px;">Risk: ${primary.severity_level}</span>

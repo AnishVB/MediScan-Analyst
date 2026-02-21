@@ -319,16 +319,27 @@ class VisionAgent:
         
         # Default to NORMAL only if NO abnormalities found
         if not has_abnormalities:
+            body_part_name = self._get_body_part_name(image_type)
             findings.append({
                 "finding_type": "Normal",
-                "location": "Region of Interest",
-                "description": f"No significant abnormalities detected in {image_type} image",
+                "location": body_part_name,
+                "description": f"Normal {body_part_name} study. No significant abnormalities detected. Image quality: adequate.",
                 "confidence": 0.88,
                 "visual_coordinates": (0, 0, width, height),
-                "ml_score": 0.0
+                "ml_score": 0.0,
+                "body_part": body_part_name,
+                "image_type": image_type
             })
         
-        logger.info(f"Vision Agent: {len(findings)} finding(s) detected - Type: {image_type} - Has Abnormalities: {has_abnormalities}")
+        # Ensure all findings include body part info
+        body_part_name = self._get_body_part_name(image_type)
+        for finding in findings:
+            if "body_part" not in finding:
+                finding["body_part"] = body_part_name
+            if "image_type" not in finding:
+                finding["image_type"] = image_type
+        
+        logger.info(f"Vision Agent: {len(findings)} finding(s) detected - Body Part: {body_part_name} - Type: {image_type} - Has Abnormalities: {has_abnormalities}")
         return findings
     
     def _localize_spine_finding(self, y, height):
@@ -343,17 +354,27 @@ class VisionAgent:
         else:
             return "Sacral"
     
+    def _get_body_part_name(self, image_type: str) -> str:
+        """Get human-readable body part name from image type"""
+        body_part_map = {
+            "chest": "Chest/Thorax",
+            "hand": "Hand/Fingers",
+            "spine": "Spine/Vertebral Column",
+            "body_region": "Body Region"
+        }
+        return body_part_map.get(image_type, f"{image_type.title()} Region")
+    
     def _detect_image_type(self, gray, height, width):
-        """Detect if chest, hand, spine, etc"""
+        """Detect if chest, hand, spine, etc - improved detection"""
         aspect_ratio = width / height
         edges = cv2.Canny(gray, 50, 150)
         edge_density = np.sum(edges) / edges.size
         
-        if 0.8 < aspect_ratio < 1.2 and height > 400:
+        if 0.7 < aspect_ratio < 1.3 and height > 350:
             return "chest"
-        elif 0.3 < aspect_ratio < 0.6:
+        elif 0.25 < aspect_ratio < 0.7:
             return "hand"
-        elif aspect_ratio > 1.2 and edge_density > 0.15:
+        elif aspect_ratio > 1.0 and edge_density > 0.12:
             return "spine"
         else:
             return "body_region"

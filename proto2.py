@@ -316,6 +316,7 @@ class VisionAgent:
         
         # Auto-detect image type
         image_type = self.detect_image_type(gray, height, width)
+        logger.info(f"Vision Agent: Detected image type as '{image_type}'")
         
         # STEP 1: CONTRAST & INTENSITY ANALYSIS
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -357,18 +358,31 @@ class VisionAgent:
         else:
             findings.extend(self._analyze_generic_xray(gray, edges, contours, height, width))
         
-        # If no findings detected, mark as normal
+        # If no findings detected, mark as normal with body part info
         if not findings:
+            body_part = self._get_body_part_name(image_type)
             findings.append(VisionFinding(
                 finding_type=AbnormalityType.NORMAL,
-                location="Region of Interest",
-                description=f"No significant abnormalities detected. Image type: {image_type}. Contrast: {contrast:.1f}",
+                location=body_part,
+                description=f"Normal {body_part} study. No significant abnormalities detected. Image quality: adequate. Contrast: {contrast:.1f}",
                 confidence=0.80,
                 visual_coordinates=(50, 100, width-50, height-100)
             ))
         
         logger.info(f"{self.name}: Analyzed {image_type} X-ray - Found {len(findings)} finding(s)")
         return findings
+    
+    def _get_body_part_name(self, image_type: str) -> str:
+        """Get human-readable body part name from image type"""
+        body_part_map = {
+            "hand": "Hand/Fingers",
+            "chest": "Chest/Thorax",
+            "spine": "Spine/Vertebral Column",
+            "abdomen": "Abdomen",
+            "limb": "Limb/Extremity",
+            "unknown": "Region of Interest"
+        }
+        return body_part_map.get(image_type, f"{image_type.title()} Region")
     
     def _analyze_hand_xray(self, gray, edges, contours, height, width):
         """Analyze hand/finger X-rays for fractures and bone abnormalities"""
@@ -380,7 +394,7 @@ class VisionAgent:
         dilated = cv2.dilate(eroded, kernel, iterations=1)
         gaps = edges - dilated
         
-        if np.sum(gaps) > (width * height * 0.02):
+        if np.sum(gaps) > (width * height * 0.01):  # Lowered from 0.02
             findings.append(VisionFinding(
                 finding_type=AbnormalityType.FRACTURE,
                 location="Metacarpal/Phalangeal region",
@@ -389,19 +403,19 @@ class VisionAgent:
                 visual_coordinates=self._get_region_coordinates(gaps, height, width)
             ))
         
-        # Bone density analysis
-        for contour in contours[:8]:
+        # Bone density analysis - more sensitive
+        for contour in contours[:10]:  # Increased from 8
             area = cv2.contourArea(contour)
-            if area > (height * width * 0.005):
+            if area > (height * width * 0.003):  # Lowered from 0.005
                 x, y, w, h = cv2.boundingRect(contour)
                 
-                # Check bone integrity
-                roi = gray[y:y+h, x:x+w]
-                if np.std(roi) > 40:  # High variance = potential fracture/break
+                # Check bone integrity with expanded ROI
+                roi = gray[max(0,y-5):min(height,y+h+5), max(0,x-5):min(width,x+w+5)]
+                if roi.size > 100 and np.std(roi) > 35:  # Lowered from 40
                     findings.append(VisionFinding(
                         finding_type=AbnormalityType.FRACTURE,
                         location=self._localize_hand_finding(x, y, width, height),
-                        description=f"Detected abnormal bone density/discontinuity ({w}×{h} px)",
+                        description=f"Detected abnormal bone density/discontinuity ({w}x{h} px) - possible fracture",
                         confidence=0.70,
                         visual_coordinates=(x, y, x+w, y+h)
                     ))
@@ -413,23 +427,23 @@ class VisionAgent:
         findings = []
         
         opacity_ratio = np.sum(bright_regions) / (height * width * 255)
-        if opacity_ratio > 0.15:
+        if opacity_ratio > 0.08:  # Lowered from 0.15
             findings.append(VisionFinding(
                 finding_type=AbnormalityType.OPACITY,
                 location="Right Lower Lobe" if width//2 < np.mean(np.where(bright_regions)[1]) else "Left Lower Lobe",
-                description=f"Detected significant opacification pattern ({opacity_ratio:.1%})",
+                description=f"Detected significant opacification pattern ({opacity_ratio:.1%}) suggesting possible infiltrate or consolidation",
                 confidence=min(0.9, 0.5 + opacity_ratio),
                 visual_coordinates=self._get_region_coordinates(bright_regions, height, width)
             ))
         
-        for i, contour in enumerate(contours[:5]):
+        for i, contour in enumerate(contours[:8]):  # Increased from 5
             area = cv2.contourArea(contour)
-            if area > (height * width * 0.01):
+            if area > (height * width * 0.006):  # Lowered from 0.01
                 x, y, w, h = cv2.boundingRect(contour)
                 findings.append(VisionFinding(
                     finding_type=AbnormalityType.SHADOW,
                     location=self._localize_chest_finding(x, y, width, height),
-                    description=f"Detected shadow/infiltrate ({w}×{h} px)",
+                    description=f"Detected shadow/infiltrate pattern ({w}x{h} px) - may indicate pathology",
                     confidence=min(0.85, 0.5 + (area / (height * width * 0.1))),
                     visual_coordinates=(x, y, x+w, y+h)
                 ))
@@ -498,17 +512,38 @@ class VisionAgent:
         """Generic analysis for unknown image types"""
         findings = []
         
-        for contour in contours[:5]:
+        for contour in contours[:8]:
             area = cv2.contourArea(contour)
-            if area > (height * width * 0.01):
+            if area > (height * width * 0.005):
                 x, y, w, h = cv2.boundingRect(contour)
+                roi = gray[max(0,y-5):min(height,y+h+5), max(0,x-5):min(width,x+w+5)]
+                roi_std = np.std(roi) if roi.size > 0 else 0
+                
+                if roi_std > 60:
+                    finding_type = AbnormalityType.IRREGULAR_PATTERN
+                else:
+                    finding_type = AbnormalityType.SHADOW
+                
                 findings.append(VisionFinding(
-                    finding_type=AbnormalityType.SHADOW,
+                    finding_type=finding_type,
                     location="Region of interest",
-                    description=f"Detected abnormal region ({w}×{h} px)",
-                    confidence=0.60,
+                    description=f"Detected abnormal region ({w}x{h} px) - variance: {roi_std:.1f}",
+                    confidence=min(0.75, 0.5 + (area / (height * width * 0.05))),
                     visual_coordinates=(x, y, x+w, y+h)
                 ))
+        
+        blurred = cv2.GaussianBlur(gray, (21, 21), 0)
+        diff = cv2.absdiff(gray, blurred)
+        texture_score = np.sum(diff > 30) / diff.size
+        
+        if texture_score > 0.05:
+            findings.append(VisionFinding(
+                finding_type=AbnormalityType.IRREGULAR_PATTERN,
+                location="Distributed throughout image",
+                description=f"Detected abnormal texture pattern ({texture_score:.1%} of image)",
+                confidence=0.65,
+                visual_coordinates=(0, 0, width, height)
+            ))
         
         return findings
     
@@ -803,7 +838,9 @@ class ReportingAgent:
         summary += f"(Confidence: {hypothesis.confidence_score:.1%}). "
         
         if len(findings) > 0:
-            summary += f"Radiographic evidence includes {len(findings)} finding(s). "
+            # Extract body parts from findings
+            body_parts = list(set([f.location for f in findings]))
+            summary += f"Radiographic analysis of {', '.join(body_parts)}: {len(findings)} finding(s) identified. "
         
         summary += hypothesis.clinical_significance
         
@@ -880,21 +917,45 @@ def init_session_state():
         st.session_state.current_report = None
     if "report_history" not in st.session_state:
         st.session_state.report_history = []
+    if "vision_findings" not in st.session_state:
+        st.session_state.vision_findings = []
+    if "hypotheses" not in st.session_state:
+        st.session_state.hypotheses = []
 
 
 def render_vision_findings(findings: List[VisionFinding]):
     """Render Vision Agent findings"""
     st.subheader("👁️ Vision Agent: Image Analysis")
     
+    if not findings:
+        st.warning("No findings detected in image.")
+        return
+    
     for i, finding in enumerate(findings):
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.write(f"**Finding {i+1}: {finding.finding_type.value}**")
-            st.write(f"Location: {finding.location}")
-            st.write(f"Description: {finding.description}")
-        with col2:
-            confidence_pct = f"{finding.confidence:.0%}"
-            st.metric("Confidence", confidence_pct)
+        # Create expandable card for each finding
+        with st.expander(f"**Finding {i+1}:** {finding.finding_type.value} - {finding.location}", expanded=(i==0)):
+            col1, col2, col3 = st.columns([2, 2, 1])
+            
+            with col1:
+                st.write("**Type:**")
+                st.write(f"`{finding.finding_type.value}`")
+            
+            with col2:
+                st.write("**Body Part Identified:**")
+                st.write(f"📍 {finding.location}")
+            
+            with col3:
+                st.metric("Confidence", f"{finding.confidence:.0%}")
+            
+            st.write("**Analysis Details:**")
+            st.write(finding.description)
+            
+            if finding.confidence >= 0.7:
+                st.success(f"High confidence finding")
+            elif finding.confidence >= 0.5:
+                st.info(f"Moderate confidence finding")
+            else:
+                st.warning(f"Lower confidence finding - recommend radiologist review")
 
 
 def render_analysis_hypotheses(hypotheses: List[MedicalHypothesis]):
@@ -946,31 +1007,38 @@ def render_diagnostic_report(report: DiagnosticReport):
     
     st.divider()
     
-    # Findings summary
-    st.write("**Preliminary Findings:**")
-    for finding in report.preliminary_findings:
-        st.write(f"• {finding}")
+    # Findings summary - Make it prominent
+    st.markdown("### 📸 Analysis Results - What Was Detected:")
+    if report.preliminary_findings:
+        for finding in report.preliminary_findings:
+            st.success(f"✓ {finding}")
+    else:
+        st.warning("No specific findings detected in analysis.")
     
     st.divider()
     
-    # Primary diagnosis
-    st.write("**Primary Assessment:**")
-    st.write(f"Condition: **{report.primary_hypothesis.condition}**")
-    st.write(f"Confidence: **{report.primary_hypothesis.confidence_score:.1%}**")
-    st.write(f"Risk Level: **{report.primary_hypothesis.severity_level}**")
+    # Primary diagnosis - Highlighted
+    col_diag1, col_diag2 = st.columns([1, 1])
+    
+    with col_diag1:
+        st.markdown("### Primary Assessment")
+        st.metric("Condition", report.primary_hypothesis.condition)
+        st.metric("Confidence Level", f"{report.primary_hypothesis.confidence_score:.1%}")
+        st.metric("Risk Level", report.primary_hypothesis.severity_level)
+    
+    with col_diag2:
+        st.markdown("### Clinical Summary")
+        st.info(report.clinical_summary)
     
     st.divider()
     
-    # Clinical summary
-    st.write("**Clinical Summary:**")
-    st.write(report.clinical_summary)
-    
-    st.divider()
-    
-    # Recommendations
-    st.write("**Recommendations:**")
+    # Recommendations with visual priority
+    st.markdown("### Clinical Recommendations")
     for rec in report.recommendations:
-        st.write(f"• {rec}")
+        if "URGENT" in rec or "CRITICAL" in rec:
+            st.error(f"🔴 {rec}")
+        else:
+            st.write(f"✓ {rec}")
 
 
 def render_radiologist_verification():
@@ -1105,10 +1173,11 @@ def main():
                 with st.spinner("Processing through 3-agent pipeline..."):
                     
                     # Stage 1: Vision Agent
-                    with st.status("👁️ Vision Agent: Analyzing image...", expanded=True) as status1:
+                    with st.status("👁󠀠 Vision Agent: Analyzing image...", expanded=True) as status1:
                         image = Image.open(uploaded_file)
                         image = image.convert("RGB")
                         vision_findings = st.session_state.orchestrator.vision_agent.analyze_image(image)
+                        st.session_state.vision_findings = vision_findings  # Store findings
                         st.write(f"✓ Identified {len(vision_findings)} radiographic finding(s)")
                         st.write(f"✓ Feature extraction complete")
                         status1.update(label="✅ Vision Agent: Complete", state="complete")
@@ -1116,6 +1185,7 @@ def main():
                     # Stage 2: Analysis Agent
                     with st.status("🧠 Analysis Agent: Medical reasoning...", expanded=True) as status2:
                         hypotheses = st.session_state.orchestrator.analysis_agent.reason_about_findings(vision_findings)
+                        st.session_state.hypotheses = hypotheses  # Store hypotheses
                         st.write(f"✓ Generated {len(hypotheses)} diagnostic hypothesis/hypotheses")
                         st.write(f"✓ Confidence scoring complete")
                         st.write(f"✓ Differential diagnosis evaluated")
@@ -1153,14 +1223,23 @@ def main():
             render_diagnostic_report(st.session_state.current_report)
         
         with tab2:
-            vision_findings = st.session_state.orchestrator.vision_agent.analyze_image(
-                Image.open(uploaded_file).convert("RGB")
-            )
-            render_vision_findings(vision_findings)
+            # Use stored findings if available, otherwise analyze
+            if hasattr(st.session_state, 'vision_findings') and st.session_state.vision_findings:
+                render_vision_findings(st.session_state.vision_findings)
+            else:
+                vision_findings = st.session_state.orchestrator.vision_agent.analyze_image(
+                    Image.open(uploaded_file).convert("RGB")
+                )
+                render_vision_findings(vision_findings)
         
         with tab3:
-            hypotheses = st.session_state.orchestrator.analysis_agent.reason_about_findings(vision_findings)
-            render_analysis_hypotheses(hypotheses)
+            # Use stored hypotheses if available, otherwise analyze
+            if hasattr(st.session_state, 'hypotheses') and st.session_state.hypotheses:
+                render_analysis_hypotheses(st.session_state.hypotheses)
+            else:
+                vision_findings_tab3 = st.session_state.vision_findings if hasattr(st.session_state, 'vision_findings') else st.session_state.orchestrator.vision_agent.analyze_image(Image.open(uploaded_file).convert("RGB"))
+                hypotheses = st.session_state.orchestrator.analysis_agent.reason_about_findings(vision_findings_tab3)
+                render_analysis_hypotheses(hypotheses)
         
         with tab4:
             render_radiologist_verification()
