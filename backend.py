@@ -210,8 +210,59 @@ class VisionAgent:
         
         has_abnormalities = False
         
+        # BRAIN/HEAD MRI ANALYSIS
+        if image_type == "brain":
+            # Brain MRI analysis - detect abnormalities like lesions, hemorrhage, masses
+            
+            # 1. Detect areas of abnormal intensity (bright spots = possible lesions)
+            _, bright_regions = cv2.threshold(enhanced, 200, 255, cv2.THRESH_BINARY)
+            bright_ratio = np.sum(bright_regions) / (height * width * 255)
+            
+            _, dark_regions = cv2.threshold(enhanced, 100, 255, cv2.THRESH_BINARY_INV)
+            dark_ratio = np.sum(dark_regions) / (height * width * 255)
+            
+            if bright_ratio > 0.05:
+                has_abnormalities = True
+                findings.append({
+                    "finding_type": "Hyperintense Region",
+                    "location": "Brain parenchyma",
+                    "description": f"Detected bright region(s) in brain tissue - {bright_ratio:.1%} of brain area. May indicate edema, hemorrhage, or abnormal tissue.",
+                    "confidence": min(0.85, 0.5 + bright_ratio*2),
+                    "visual_coordinates": (0, 0, width, height),
+                    "ml_score": bright_ratio
+                })
+            
+            if dark_ratio > 0.05:
+                has_abnormalities = True
+                findings.append({
+                    "finding_type": "Hypointense Region",
+                    "location": "Brain parenchyma",
+                    "description": f"Detected dark region(s) in brain tissue - {dark_ratio:.1%} of brain area. May indicate infarction, atrophy, or mass effect.",
+                    "confidence": min(0.85, 0.5 + dark_ratio*2),
+                    "visual_coordinates": (0, 0, width, height),
+                    "ml_score": dark_ratio
+                })
+            
+            # 2. Detect structural abnormalities via contours
+            for contour in contours[:12]:
+                area = cv2.contourArea(contour)
+                if (height * width * 0.008) < area < (height * width * 0.15):
+                    x, y, w, h = cv2.boundingRect(contour)
+                    roi = gray[max(0,y-5):min(height,y+h+5), max(0,x-5):min(width,x+w+5)]
+                    
+                    if roi.size > 100 and np.std(roi) > 45:
+                        has_abnormalities = True
+                        findings.append({
+                            "finding_type": "Brain Lesion/Abnormality",
+                            "location": f"Brain region ({x},{y})",
+                            "description": f"Detected lesion or abnormal structure ({w}x{h} px) - high texture variance. Requires clinical correlation.",
+                            "confidence": min(0.80, 0.5 + (np.std(roi)/150)),
+                            "visual_coordinates": (x, y, x+w, y+h),
+                            "ml_score": float(np.std(roi) / 256)
+                        })
+        
         # CHEST X-RAY ANALYSIS
-        if image_type == "chest":
+        elif image_type == "chest":
             # Detect bright areas (consolidations)
             _, bright_regions = cv2.threshold(enhanced, 180, 255, cv2.THRESH_BINARY)
             opacity_ratio = np.sum(bright_regions) / (height * width * 255)
@@ -360,20 +411,37 @@ class VisionAgent:
             "chest": "Chest/Thorax",
             "hand": "Hand/Fingers",
             "spine": "Spine/Vertebral Column",
+            "brain": "Brain/Head",
             "body_region": "Body Region"
         }
         return body_part_map.get(image_type, f"{image_type.title()} Region")
     
     def _detect_image_type(self, gray, height, width):
-        """Detect if chest, hand, spine, etc - improved detection"""
+        """Detect image type: chest, hand, spine, head/brain, etc - improved detection"""
         aspect_ratio = width / height
         edges = cv2.Canny(gray, 50, 150)
         edge_density = np.sum(edges) / edges.size
         
-        if 0.7 < aspect_ratio < 1.3 and height > 350:
-            return "chest"
+        # Get image characteristics
+        brightness = np.mean(gray)
+        contrast = np.std(gray)
+        
+        # Brain/Head MRI: nearly square, high internal detail, specific brightness range
+        # MRI typically has very distinct brain structures with high local variation
+        if 0.85 < aspect_ratio < 1.2 and height > 300:
+            # Check if it's brain MRI vs chest by analyzing internal structure
+            # Brain MRI has very high internal edge density and complexity
+            if edge_density > 0.18:  # Much higher edge density than chest
+                return "brain"
+            # Could still be chest - check brightness profile
+            elif brightness < 90:  # Brain MRI tends to be darker
+                return "brain"
+            else:
+                return "chest"
+        # Hand/extremity: tall and narrow
         elif 0.25 < aspect_ratio < 0.7:
             return "hand"
+        # Spine: wider, high edge density from vertebrae
         elif aspect_ratio > 1.0 and edge_density > 0.12:
             return "spine"
         else:

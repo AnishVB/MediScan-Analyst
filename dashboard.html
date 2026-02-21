@@ -622,6 +622,247 @@
           </div>
         </div>
 
+        <!-- ========= PAGE: PATIENT PROFILE ========= -->
+        <div id="profilePage" style="display: none">
+          <div style="max-width: 1400px; margin: 0 auto">
+            <!-- Patient Header -->
+            <div
+              class="card"
+              style="
+                background: linear-gradient(135deg, #2a1f4e 0%, #1a1a3e 100%);
+                margin-bottom: 30px;
+              "
+            >
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 2fr 1fr;
+                  gap: 30px;
+                  align-items: start;
+                "
+              >
+                <!-- Patient Info -->
+                <div>
+                  <h1
+                    id="profilePatientName"
+                    style="color: #a78bfa; font-size: 32px; margin-bottom: 20px"
+                  >
+                    Patient Name
+                  </h1>
+                  <div
+                    style="
+                      display: grid;
+                      grid-template-columns: 1fr 1fr;
+                      gap: 20px;
+                    "
+                  >
+                    <div>
+                      <div
+                        style="
+                          color: #808080;
+                          font-size: 12px;
+                          margin-bottom: 5px;
+                        "
+                      >
+                        MRN
+                      </div>
+                      <div
+                        id="profileMRN"
+                        style="color: #e0e0e0; font-weight: bold"
+                      >
+                        MRN-XXXX
+                      </div>
+                    </div>
+                    <div>
+                      <div
+                        style="
+                          color: #808080;
+                          font-size: 12px;
+                          margin-bottom: 5px;
+                        "
+                      >
+                        Age
+                      </div>
+                      <div
+                        id="profileAge"
+                        style="color: #e0e0e0; font-weight: bold"
+                      >
+                        --
+                      </div>
+                    </div>
+                    <div>
+                      <div
+                        style="
+                          color: #808080;
+                          font-size: 12px;
+                          margin-bottom: 5px;
+                        "
+                      >
+                        DOB
+                      </div>
+                      <div
+                        id="profileDOB"
+                        style="color: #e0e0e0; font-weight: bold"
+                      >
+                        --
+                      </div>
+                    </div>
+                    <div>
+                      <div
+                        style="
+                          color: #808080;
+                          font-size: 12px;
+                          margin-bottom: 5px;
+                        "
+                      >
+                        Total Scans
+                      </div>
+                      <div
+                        id="profileScanCount"
+                        style="
+                          color: #a78bfa;
+                          font-weight: bold;
+                          font-size: 18px;
+                        "
+                      >
+                        0
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Action Buttons -->
+                <div style="display: flex; flex-direction: column; gap: 10px">
+                  <button
+                    class="btn"
+                    onclick="goToAnalysis()"
+                    style="
+                      background: linear-gradient(
+                        135deg,
+                        #667eea 0%,
+                        #764ba2 100%
+                      );
+                      width: 100%;
+                      padding: 15px;
+                    "
+                  >
+                    🚀 Start New Scan
+                  </button>
+                  <button
+                    class="btn btn-secondary"
+                    onclick="goToHome()"
+                    style="width: 100%; padding: 15px"
+                  >
+                    ← Back to Patients
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scan History -->
+            <div class="card">
+              <h2>📋 Recent Scan History</h2>
+              <div
+                id="scanHistoryContainer"
+                style="max-height: 400px; overflow-y: auto"
+              >
+                <p style="color: #808080; text-align: center; padding: 40px">
+                  No scans found
+                </p>
+              </div>
+            </div>
+
+            <!-- Medical History -->
+            <div class="card">
+              <h2>📝 Medical History & Notes</h2>
+              <div
+                id="medicalHistoryContainer"
+                style="
+                  background: #1a1a2e;
+                  padding: 20px;
+                  border-radius: 8px;
+                  border-left: 4px solid #667eea;
+                "
+              >
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                    margin-bottom: 20px;
+                  "
+                >
+                  <div>
+                    <label
+                      style="
+                        color: #a78bfa;
+                        font-weight: bold;
+                        display: block;
+                        margin-bottom: 8px;
+                      "
+                      >Clinical History:</label
+                    >
+                    <div
+                      id="profileClinicalHistory"
+                      style="color: #b0b0b0; font-size: 14px"
+                    >
+                      No clinical history recorded
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      style="
+                        color: #a78bfa;
+                        font-weight: bold;
+                        display: block;
+                        margin-bottom: 8px;
+                      "
+                      >Conditions:</label
+                    >
+                    <div
+                      id="profileConditions"
+                      style="color: #b0b0b0; font-size: 14px"
+                    >
+                      None recorded
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    style="
+                      color: #a78bfa;
+                      font-weight: bold;
+                      display: block;
+                      margin-bottom: 8px;
+                    "
+                    >Additional Notes:</label
+                  >
+                  <textarea
+                    id="profileNotes"
+                    placeholder="Add medical notes here..."
+                    style="
+                      width: 100%;
+                      height: 100px;
+                      padding: 10px;
+                      background: #2a2a4e;
+                      border: 1px solid #3a3a5c;
+                      color: #e0e0e0;
+                      border-radius: 5px;
+                      font-family: monospace;
+                    "
+                  ></textarea>
+                  <button
+                    class="btn"
+                    onclick="savePatientNotes()"
+                    style="margin-top: 10px; width: 100%"
+                  >
+                    💾 Save Notes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ========= PAGE: IMAGE ANALYSIS ========= -->
         <div id="analysisPage">
           <div class="analysis-grid">
@@ -679,31 +920,197 @@
             </div>
 
             <!-- RESULTS -->
-            <div class="results" id="results">
-              <!-- VISION FINDINGS -->
-              <div class="card full-width">
-                <h2>👁️ Vision Agent: Image Analysis</h2>
-                <div id="visionFindings"></div>
+            <div
+              class="results"
+              id="results"
+              style="
+                display: grid;
+                grid-template-columns: 2fr 1fr;
+                gap: 20px;
+                align-items: start;
+              "
+            >
+              <!-- LEFT SIDE: ANALYSIS RESULTS -->
+              <div>
+                <!-- VISION FINDINGS -->
+                <div class="card">
+                  <h2>👁️ Vision Agent: Image Analysis</h2>
+                  <div id="visionFindings"></div>
+                </div>
+
+                <!-- ANALYSIS HYPOTHESES -->
+                <div class="card">
+                  <h2>🧠 Analysis Agent: Medical Reasoning</h2>
+                  <div id="analysisResults"></div>
+                </div>
+
+                <!-- DIAGNOSTIC REPORT -->
+                <div class="card">
+                  <h2>📋 Diagnostic Report</h2>
+                  <div id="diagnosticReport"></div>
+                </div>
               </div>
 
-              <!-- ANALYSIS HYPOTHESES -->
-              <div class="card full-width">
-                <h2>🧠 Analysis Agent: Medical Reasoning</h2>
-                <div id="analysisResults"></div>
-              </div>
+              <!-- RIGHT SIDE: VERIFICATION & ACTIONS PANEL -->
+              <div style="position: sticky; top: 20px">
+                <div
+                  class="card"
+                  style="
+                    background: linear-gradient(
+                      135deg,
+                      #2a1f4e 0%,
+                      #1a1a3e 100%
+                    );
+                    border: 2px solid #667eea;
+                  "
+                >
+                  <h3
+                    style="
+                      color: #667eea;
+                      margin-bottom: 20px;
+                      border-bottom: 2px solid #667eea;
+                      padding-bottom: 10px;
+                    "
+                  >
+                    🔐 Verification & Approval
+                  </h3>
 
-              <!-- DIAGNOSTIC REPORT -->
-              <div class="card full-width">
-                <h2>📋 Diagnostic Report</h2>
-                <div id="diagnosticReport"></div>
+                  <!-- Doctor Verification Section -->
+                  <div style="margin-bottom: 20px">
+                    <label
+                      style="
+                        display: block;
+                        color: #a78bfa;
+                        font-weight: bold;
+                        margin-bottom: 10px;
+                      "
+                      >Send for Professional Review:</label
+                    >
+                    <select
+                      id="doctorSelect"
+                      style="
+                        width: 100%;
+                        padding: 10px;
+                        background: #2a2a4e;
+                        border: 1px solid #3a3a5c;
+                        color: #e0e0e0;
+                        border-radius: 5px;
+                        margin-bottom: 8px;
+                      "
+                    >
+                      <option value="">-- Select Doctor --</option>
+                      <option value="dr_smith">Dr. Smith (Radiologist)</option>
+                      <option value="dr_johnson">
+                        Dr. Johnson (Senior Staff)
+                      </option>
+                      <option value="dr_patel">Dr. Patel (Cardiologist)</option>
+                      <option value="admin">Admin Review</option>
+                    </select>
+                    <button
+                      class="btn"
+                      onclick="sendForVerification()"
+                      style="width: 100%"
+                    >
+                      📤 Send for Review
+                    </button>
+                  </div>
 
-                <div class="button-group">
-                  <button class="btn" onclick="saveScan()">
-                    💾 Save to Patient Record
-                  </button>
-                  <button class="btn btn-secondary" onclick="resetAnalysis()">
-                    🔄 New Analysis
-                  </button>
+                  <hr
+                    style="
+                      border: none;
+                      border-top: 1px solid #3a3a5c;
+                      margin: 15px 0;
+                    "
+                  />
+
+                  <!-- Comments Section -->
+                  <div style="margin-bottom: 20px">
+                    <label
+                      style="
+                        display: block;
+                        color: #a78bfa;
+                        font-weight: bold;
+                        margin-bottom: 8px;
+                      "
+                      >Add Comments before Saving:</label
+                    >
+                    <textarea
+                      id="analyticsComments"
+                      placeholder="Enter any notes, clinical observations, or corrections..."
+                      style="
+                        width: 100%;
+                        height: 100px;
+                        padding: 10px;
+                        background: #2a2a4e;
+                        border: 1px solid #3a3a5c;
+                        color: #e0e0e0;
+                        border-radius: 5px;
+                        font-family: monospace;
+                        font-size: 12px;
+                        resize: vertical;
+                      "
+                    ></textarea>
+                  </div>
+
+                  <hr
+                    style="
+                      border: none;
+                      border-top: 1px solid #3a3a5c;
+                      margin: 15px 0;
+                    "
+                  />
+
+                  <!-- Status Indicator -->
+                  <div
+                    style="
+                      background: #1a2a4e;
+                      padding: 12px;
+                      border-radius: 5px;
+                      margin-bottom: 15px;
+                      border-left: 4px solid #667eea;
+                    "
+                  >
+                    <div
+                      style="
+                        font-size: 12px;
+                        color: #b0b0b0;
+                        margin-bottom: 5px;
+                      "
+                    >
+                      REPORT STATUS:
+                    </div>
+                    <div
+                      id="reportStatus"
+                      style="font-weight: bold; color: #fbbf24"
+                    >
+                      ⏳ Pending Review
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div style="display: flex; flex-direction: column; gap: 8px">
+                    <button
+                      class="btn"
+                      onclick="finalSaveToProfile()"
+                      style="
+                        width: 100%;
+                        background: linear-gradient(
+                          135deg,
+                          #10b981 0%,
+                          #059669 100%
+                        );
+                      "
+                    >
+                      ✅ Save to Patient Profile
+                    </button>
+                    <button
+                      class="btn btn-secondary"
+                      onclick="resetAnalysis()"
+                      style="width: 100%"
+                    >
+                      🔄 New Analysis
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -758,12 +1165,109 @@
 
       function selectPatient(mrn) {
         currentPatient = patients.find((p) => p.mrn === mrn);
+        displayPatientProfile();
+        document.getElementById("homePage").style.display = "none";
+        document.getElementById("profilePage").style.display = "block";
+        document.getElementById("analysisPage").style.display = "none";
+        document.getElementById("backBtn").style.display = "block";
+      }
+
+      function displayPatientProfile() {
+        if (!currentPatient) return;
+
+        // Update patient info
+        document.getElementById("profilePatientName").textContent =
+          currentPatient.name;
+        document.getElementById("profileMRN").textContent = currentPatient.mrn;
+        document.getElementById("profileAge").textContent =
+          currentPatient.age || "--";
+        document.getElementById("profileDOB").textContent =
+          currentPatient.dob || "--";
+        document.getElementById("profileScanCount").textContent =
+          currentPatient.scans ? currentPatient.scans.length : 0;
+
+        // Display scan history
+        displayScanHistory();
+
+        // Display medical history/notes
+        document.getElementById("profileClinicalHistory").textContent =
+          currentPatient.clinicalHistory || "No clinical history recorded";
+        document.getElementById("profileConditions").textContent =
+          currentPatient.conditions || "None recorded";
+        document.getElementById("profileNotes").value =
+          currentPatient.notes || "";
+      }
+
+      function displayScanHistory() {
+        const container = document.getElementById("scanHistoryContainer");
+
+        if (!currentPatient.scans || currentPatient.scans.length === 0) {
+          container.innerHTML =
+            '<p style="color: #808080; text-align: center; padding: 40px;">No scans in history</p>';
+          return;
+        }
+
+        const scans = [...currentPatient.scans].reverse(); // Show newest first
+        container.innerHTML = scans
+          .map(
+            (scan, idx) => `
+          <div style="background: #1a1a2e; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 3px solid #667eea;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div style="font-weight: bold; color: #a78bfa;">Scan #${scans.length - idx}</div>
+              <div style="font-size: 12px; color: #808080;">${new Date(scan.timestamp).toLocaleString()}</div>
+            </div>
+            <div style="color: #b0b0b0; font-size: 13px; margin-bottom: 8px;">
+              <div>📊 <strong>Finding:</strong> ${scan.analysis.findings[0]?.finding_type || "Unknown"}</div>
+              <div>📍 <strong>Location:</strong> ${scan.analysis.findings[0]?.body_part || "Unknown"}</div>
+              <div>🎯 <strong>Primary:</strong> ${scan.analysis.report.primary_hypothesis.condition}</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <span style="background: ${scan.status === "saved" ? "#10b981" : "#f59e0b"}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">
+                ${scan.status === "saved" ? "✅ Saved" : "⏳ Pending"}
+              </span>
+              ${scan.comments ? `<span style="background: #667eea; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">💬 Comments</span>` : ""}
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      function goToAnalysis() {
+        document.getElementById("profilePage").style.display = "none";
+        document.getElementById("analysisPage").style.display = "block";
         document.getElementById("currentPatientDisplay").textContent =
           `${currentPatient.name} (${currentPatient.mrn})`;
-        document.getElementById("homePage").style.display = "none";
-        document.getElementById("analysisPage").style.display = "block";
-        document.getElementById("backBtn").style.display = "block";
         resetAnalysis();
+      }
+
+      function goToHome() {
+        document.getElementById("profilePage").style.display = "none";
+        document.getElementById("homePage").style.display = "block";
+        document.getElementById("backBtn").style.display = "none";
+        currentPatient = null;
+        currentAnalysis = null;
+      }
+
+      function savePatientNotes() {
+        if (!currentPatient) return;
+
+        const patientIdx = patients.findIndex(
+          (p) => p.mrn === currentPatient.mrn,
+        );
+        if (patientIdx === -1) return;
+
+        patients[patientIdx].notes =
+          document.getElementById("profileNotes").value;
+        localStorage.setItem("patients", JSON.stringify(patients));
+
+        const msg = document.getElementById("successMessage");
+        msg.textContent = "✓ Patient notes saved successfully!";
+        msg.style.display = "block";
+        setTimeout(() => (msg.style.display = "none"), 3000);
+
+        // Update current patient object
+        currentPatient.notes = patients[patientIdx].notes;
       }
 
       function toggleAddPatient() {
@@ -1000,6 +1504,86 @@
                     </p>
                 </div>
             `;
+      }
+
+      function sendForVerification() {
+        const doctorSelect = document.getElementById("doctorSelect");
+        const selectedDoctor = doctorSelect.value;
+
+        if (!selectedDoctor) {
+          alert("Please select a doctor to send the analysis to");
+          return;
+        }
+
+        if (!currentAnalysis || !currentPatient) return;
+
+        // Create verification record
+        const verificationRecord = {
+          sentTo: selectedDoctor,
+          sentAt: new Date().toISOString(),
+          analysis: currentAnalysis,
+          patient: currentPatient,
+          status: "sent_for_review",
+          comments: document.getElementById("analyticsComments").value,
+        };
+
+        // Store in verification queue
+        let verificationQueue =
+          JSON.parse(localStorage.getItem("verificationQueue")) || [];
+        verificationQueue.push(verificationRecord);
+        localStorage.setItem(
+          "verificationQueue",
+          JSON.stringify(verificationQueue),
+        );
+
+        // Update status
+        document.getElementById("reportStatus").textContent =
+          `📤 Sent to ${selectedDoctor}`;
+        document.getElementById("reportStatus").style.color = "#3b82f6";
+
+        const msg = document.getElementById("successMessage");
+        msg.textContent = `✓ Analysis sent to ${selectedDoctor} for verification!`;
+        msg.style.display = "block";
+        setTimeout(() => (msg.style.display = "none"), 3000);
+      }
+
+      async function finalSaveToProfile() {
+        if (!currentAnalysis || !currentPatient) return;
+
+        const comments = document.getElementById("analyticsComments").value;
+        const doctorSelect = document.getElementById("doctorSelect").value;
+
+        const patientIdx = patients.findIndex(
+          (p) => p.mrn === currentPatient.mrn,
+        );
+        if (patientIdx === -1) return;
+
+        if (!patients[patientIdx].scans) patients[patientIdx].scans = [];
+
+        const scanRecord = {
+          timestamp: new Date().toISOString(),
+          analysis: currentAnalysis,
+          status: "saved",
+          comments: comments,
+          sentForReviewTo: doctorSelect,
+          verified: false,
+        };
+
+        patients[patientIdx].scans.push(scanRecord);
+        localStorage.setItem("patients", JSON.stringify(patients));
+
+        // Update status
+        document.getElementById("reportStatus").textContent =
+          "✅ Saved to Profile";
+        document.getElementById("reportStatus").style.color = "#10b981";
+
+        const msg = document.getElementById("successMessage");
+        msg.textContent = `✓ Scan saved to ${currentPatient.name}'s patient profile with comments and verification request!`;
+        msg.style.display = "block";
+        setTimeout(() => {
+          msg.style.display = "none";
+          resetAnalysis();
+        }, 3000);
       }
 
       async function saveScan() {
