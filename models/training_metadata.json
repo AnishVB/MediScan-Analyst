@@ -1,0 +1,15 @@
+{
+  "trained_at": "2026-02-24",
+  "device": "cpu",
+  "framework": "PyTorch->ONNX",
+  "architecture": "MediScanCNN",
+  "datasets_source": "MedMNIST",
+  "models": {
+    "organamnist": {
+      "onnx_size_mb": 0.02
+    },
+    "pneumoniamnist": {
+      "onnx_size_mb": 0.02
+    }
+  }
+}

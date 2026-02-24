@@ -3,13 +3,19 @@ const AGENTS = [
     id: "vision",
     name: "Vision Agent",
     icon: "👁️",
-    desc: "Processes image, identifies anatomical structures, detects abnormalities",
+    desc: "OpenCV image processing, anatomical structure detection",
+  },
+  {
+    id: "dl_classification",
+    name: "DL Classification",
+    icon: "🤖",
+    desc: "CNN pathology detection (DenseNet-121 + Custom MediScanCNN)",
   },
   {
     id: "analysis",
     name: "Analysis Agent",
     icon: "🧠",
-    desc: "Cross-references findings with medical knowledge, evaluates diagnoses",
+    desc: "Merges heuristic + DL findings, evaluates differential diagnoses",
   },
   {
     id: "reporting",
@@ -20,7 +26,14 @@ const AGENTS = [
 ];
 
 function getStatus(agentId, currentStage) {
-  const order = ["idle", "vision", "analysis", "reporting", "complete"];
+  const order = [
+    "idle",
+    "vision",
+    "dl_classification",
+    "analysis",
+    "reporting",
+    "complete",
+  ];
   const agentIndex = order.indexOf(agentId);
   const currentIndex = order.indexOf(currentStage);
 

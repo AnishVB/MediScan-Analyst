@@ -1,0 +1,18 @@
+# MediScan Analyst — Development Dependencies (for training & model export)
+# Install: pip install -r requirements-dev.txt
+
+# Runtime deps
+-r requirements.txt
+
+# PyTorch CPU (for training & ONNX export)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Medical imaging models & datasets
+torchxrayvision>=1.2.0
+medmnist>=3.0.0
+
+# ONNX export
+onnx>=1.15.0
+onnxscript>=0.1.0

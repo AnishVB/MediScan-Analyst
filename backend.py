@@ -1,6 +1,7 @@
 """
-MediScan Analyst — FastAPI Backend with Three-Agent Architecture
-Vision Agent → Analysis Agent → Reporting Agent
+MediScan Analyst — FastAPI Backend with Four-Agent Architecture
+Vision Agent → DL Classification Agent → Analysis Agent → Reporting Agent
+Hybrid: Custom CNN + OpenCV + Pre-trained DenseNet
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Query
@@ -21,6 +22,7 @@ from datetime import datetime
 import time
 
 import database as db
+from dl_models import model_manager
 
 # Ensure uploads directory exists
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,8 +34,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="MediScan Analyst API",
-    description="Agentic AI Co-pilot for Medical Imaging and Diagnosis Support",
-    version="2.0"
+    description="Agentic AI Co-pilot for Medical Imaging and Diagnosis Support — Hybrid DL + CV2",
+    version="3.0"
 )
 
 app.add_middleware(
@@ -198,7 +200,7 @@ class VisionAgent:
 
     def __init__(self):
         self.name = "Vision Agent"
-        self.version = "2.0"
+        self.version = "3.0"
 
     def process(self, image: Image.Image) -> dict:
         """Run full vision pipeline on the image."""
@@ -235,36 +237,139 @@ class VisionAgent:
         }
 
     def _classify_image(self, gray, rgb):
-        """Classify image type based on visual characteristics."""
+        """Classify image type using graduated multi-feature scoring."""
         h, w = gray.shape
         aspect = w / h if h > 0 else 1
         contrast = float(gray.std())
         brightness = float(gray.mean())
 
-        hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
-        edges = cv2.Canny(gray, 100, 200)
+        hist = cv2.calcHist([gray], [0], None, [256], [0, 256]).flatten()
+        hist_norm = hist / hist.sum() if hist.sum() > 0 else hist
+        edges = cv2.Canny(gray, 50, 150)
         edge_density = float(np.sum(edges > 0) / (h * w))
 
-        scores = {}
+        # Symmetry analysis — medical images typically show bilateral symmetry
+        mid = w // 2
+        left_half = gray[:, :mid]
+        right_half = cv2.flip(gray[:, w - mid:], 1)
+        symmetry = 1.0 - float(np.mean(np.abs(left_half.astype(float) - right_half.astype(float)))) / 255.0
 
-        # Chest X-ray: portrait orientation, moderate contrast
-        if 0.55 < aspect < 1.1 and 25 < contrast < 85 and 50 < brightness < 160:
-            scores["chest"] = 0.75 + min(edge_density * 0.2, 0.15)
+        # Histogram shape analysis
+        dark_ratio = float(hist_norm[:64].sum())     # Dark pixels
+        bright_ratio = float(hist_norm[192:].sum())   # Bright pixels
+        mid_ratio = float(hist_norm[64:192].sum())    # Mid-tone pixels
 
-        # Hand/Skeletal: square-ish, high contrast
-        if 0.7 < aspect < 1.3 and contrast > 40:
-            scores["hand"] = 0.65 + min(edge_density * 0.25, 0.2)
+        # Texture complexity via Laplacian variance
+        laplacian_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
-        # Brain MRI/CT: square, specific contrast
-        if 0.85 < aspect < 1.15 and 35 < contrast < 75 and brightness < 120:
-            scores["brain"] = 0.70
+        # ROI center brightness — medical scans often have brighter content at center
+        cy, cx = h // 2, w // 2
+        roi_size = min(h, w) // 4
+        center_roi = gray[cy - roi_size:cy + roi_size, cx - roi_size:cx + roi_size]
+        center_brightness = float(center_roi.mean()) if center_roi.size > 0 else brightness
+        center_contrast = float(center_roi.std()) if center_roi.size > 0 else contrast
 
-        # Spine: tall, linear structures
-        if aspect < 0.65 and edge_density > 0.08:
-            scores["spine"] = 0.65
+        # Initialize all scores with a small base
+        scores = {
+            "chest": 0.20,
+            "hand": 0.20,
+            "brain": 0.20,
+            "spine": 0.20,
+            "general": 0.25,
+        }
 
-        if not scores:
-            scores["general"] = 0.5
+        # ---------- CHEST X-RAY ----------
+        # Portrait or near-square, moderate brightness, bilateral symmetry
+        if 0.5 < aspect < 1.2:
+            scores["chest"] += 0.12
+        if 0.7 < aspect < 1.0:
+            scores["chest"] += 0.08
+        if 40 < brightness < 180:
+            scores["chest"] += 0.08
+        if 70 < brightness < 150:
+            scores["chest"] += 0.06
+        if 25 < contrast < 90:
+            scores["chest"] += 0.08
+        if symmetry > 0.75:
+            scores["chest"] += 0.10
+        if symmetry > 0.85:
+            scores["chest"] += 0.05
+        if 0.04 < edge_density < 0.20:
+            scores["chest"] += 0.06
+        if dark_ratio > 0.15:  # X-rays typically have dark background
+            scores["chest"] += 0.06
+        if center_brightness > brightness * 1.05:  # Chest content brighter than background
+            scores["chest"] += 0.05
+
+        # ---------- HAND / EXTREMITY ----------
+        # Often high contrast bone vs background, asymmetric, irregular edges
+        if contrast > 35:
+            scores["hand"] += 0.08
+        if contrast > 55:
+            scores["hand"] += 0.05
+        if edge_density > 0.08:
+            scores["hand"] += 0.08
+        if edge_density > 0.14:
+            scores["hand"] += 0.05
+        if symmetry < 0.70:
+            scores["hand"] += 0.10
+        if symmetry < 0.60:
+            scores["hand"] += 0.05
+        if dark_ratio > 0.25:  # Lots of black background around hand
+            scores["hand"] += 0.06
+        if bright_ratio > 0.08:  # Bright bone regions
+            scores["hand"] += 0.06
+        if 0.6 < aspect < 1.5:
+            scores["hand"] += 0.04
+        if laplacian_var > 500:  # Complex fine structures (bones)
+            scores["hand"] += 0.05
+
+        # ---------- BRAIN MRI/CT ----------
+        # Very square, centered bright region, dark border, high symmetry
+        if 0.85 < aspect < 1.15:
+            scores["brain"] += 0.12
+        if 0.92 < aspect < 1.08:
+            scores["brain"] += 0.08
+        if brightness < 130:
+            scores["brain"] += 0.06
+        if 30 < contrast < 80:
+            scores["brain"] += 0.06
+        if symmetry > 0.70:
+            scores["brain"] += 0.08
+        if dark_ratio > 0.20:  # Dark border around brain
+            scores["brain"] += 0.05
+        if center_brightness > brightness * 1.15:  # Brain content notably brighter
+            scores["brain"] += 0.10
+        if center_contrast > contrast * 0.8:
+            scores["brain"] += 0.04
+        if 0.03 < edge_density < 0.15:
+            scores["brain"] += 0.04
+
+        # ---------- SPINE ----------
+        # Tall/portrait orientation, vertically oriented edges
+        if aspect < 0.75:
+            scores["spine"] += 0.15
+        if aspect < 0.55:
+            scores["spine"] += 0.10
+        if edge_density > 0.06:
+            scores["spine"] += 0.06
+        if contrast > 30:
+            scores["spine"] += 0.04
+        # Check vertical edge dominance (Sobel)
+        sobel_v = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+        sobel_h = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        vert_energy = float(np.abs(sobel_v).mean())
+        horiz_energy = float(np.abs(sobel_h).mean())
+        if vert_energy > horiz_energy * 1.2:
+            scores["spine"] += 0.08
+
+        # ---------- GENERAL penalty ----------
+        # Reduce general score when specific features are strong
+        max_specific = max(scores["chest"], scores["hand"], scores["brain"], scores["spine"])
+        if max_specific > 0.50:
+            scores["general"] = max(0.15, scores["general"] - 0.15)
+        if max_specific > 0.65:
+            scores["general"] = max(0.10, scores["general"] - 0.10)
 
         best = max(scores, key=scores.get)
         body_map = {
@@ -274,7 +379,12 @@ class VisionAgent:
             "spine": "Spine",
             "general": "General",
         }
-        return best, body_map.get(best, "General"), scores[best]
+
+        # Normalize confidence to 0-1 range
+        confidence = min(scores[best], 0.95)
+
+        logger.info(f"🔍 Classification scores: {', '.join(f'{k}={v:.2f}' for k, v in sorted(scores.items(), key=lambda x: -x[1]))}")
+        return best, body_map.get(best, "General"), confidence
 
     def _extract_features(self, enhanced, gray, rgb, contours, image_type):
         """Extract quantitative features from the image."""
@@ -397,7 +507,73 @@ class VisionAgent:
 
 
 # ============================================================================
-# AGENT 2: ANALYSIS AGENT
+# AGENT 2: DL CLASSIFICATION AGENT
+# ============================================================================
+
+class DLClassificationAgent:
+    """
+    Deep Learning Classification Agent.
+    Runs CNN-based inference using ONNX models:
+      - Custom MediScanCNN (trained on MedMNIST public datasets)
+      - Pre-trained DenseNet-121 (trained on 873k+ chest X-rays)
+    """
+
+    def __init__(self):
+        self.name = "DL Classification Agent"
+        self.version = "3.0"
+        self.model_manager = model_manager
+
+    def process(self, image: "Image.Image", body_part: str = "general") -> dict:
+        """Run all relevant DL models on the image."""
+        img_array = np.array(image.convert("RGB"))
+
+        # Run all relevant models for this body part
+        dl_results = self.model_manager.run_all_relevant(img_array, body_part)
+
+        # Build structured output
+        predictions = []
+        top_pathology = None
+        dl_confidence = 0.0
+
+        # Process chest pathology predictions
+        if dl_results.get("chest_pathology"):
+            chest_preds = dl_results["chest_pathology"]
+            # Get top 5 predictions above threshold
+            significant = [p for p in chest_preds if p["probability"] > 0.1]
+            top_5 = significant[:5] if significant else chest_preds[:3]
+            predictions.extend(top_5)
+            if top_5:
+                top_pathology = top_5[0]
+                dl_confidence = max(dl_confidence, top_5[0]["probability"])
+
+        # Process MedMNIST predictions
+        medmnist_top = {}
+        for model_name, data in dl_results.get("medmnist_predictions", {}).items():
+            preds = data.get("predictions", [])
+            if preds:
+                top_pred = preds[0]
+                medmnist_top[model_name] = {
+                    "description": data["description"],
+                    "top_prediction": top_pred["label"],
+                    "confidence": top_pred["probability"],
+                    "all_predictions": preds[:3],  # Top 3
+                }
+                dl_confidence = max(dl_confidence, top_pred["probability"])
+
+        return {
+            "agent": self.name,
+            "dl_available": dl_results["dl_available"],
+            "chest_pathology_predictions": predictions,
+            "medmnist_predictions": medmnist_top,
+            "top_pathology": top_pathology,
+            "dl_confidence": float(dl_confidence),
+            "models_used": dl_results["models_used"],
+            "models_status": dl_results["models_status"],
+        }
+
+
+# ============================================================================
+# AGENT 3: ANALYSIS AGENT
 # ============================================================================
 
 class AnalysisAgent:
@@ -408,22 +584,32 @@ class AnalysisAgent:
 
     def __init__(self):
         self.name = "Analysis Agent"
-        self.version = "2.0"
+        self.version = "3.0"
         self.knowledge = KNOWLEDGE_BASE
 
-    def process(self, vision_output: dict, patient_history: dict = None) -> dict:
-        """Analyze vision findings against medical knowledge."""
+    def process(self, vision_output: dict, patient_history: dict = None, dl_output: dict = None) -> dict:
+        """Analyze vision findings against medical knowledge, enhanced with DL predictions."""
         image_type = vision_output["image_type"]
         features = vision_output["features"]
         structures = vision_output["structures"]
 
         kb = self.knowledge.get(image_type, self.knowledge["general"])
 
-        # Generate findings from analysis
+        # Generate findings from OpenCV analysis
         findings = self._generate_findings(image_type, features, structures, kb)
+
+        # Merge DL predictions into findings
+        dl_findings = []
+        if dl_output and dl_output.get("dl_available"):
+            dl_findings = self._merge_dl_predictions(dl_output, image_type)
+            findings.extend(dl_findings)
 
         # Compute differential diagnoses
         differentials = self._differential_diagnosis(image_type, features, findings, kb)
+
+        # Boost differentials with DL confidence
+        if dl_output and dl_output.get("top_pathology"):
+            differentials = self._boost_with_dl(differentials, dl_output)
 
         # Primary hypothesis
         primary = differentials[0] if differentials else {
@@ -433,9 +619,15 @@ class AnalysisAgent:
             "risk_level": "Unknown",
         }
 
-        # Overall confidence
+        # Overall confidence (weighted: 60% DL + 40% heuristic if DL available)
         finding_confidences = [f["confidence"] for f in findings]
-        avg_confidence = np.mean(finding_confidences) if finding_confidences else 0.5
+        heuristic_confidence = np.mean(finding_confidences) if finding_confidences else 0.5
+        dl_confidence = dl_output.get("dl_confidence", 0) if dl_output else 0
+
+        if dl_confidence > 0:
+            avg_confidence = 0.6 * dl_confidence + 0.4 * heuristic_confidence
+        else:
+            avg_confidence = heuristic_confidence
 
         # Enhance with patient history if available
         history_context = ""
@@ -450,6 +642,8 @@ class AnalysisAgent:
             "clinical_significance": self._assess_significance(primary, findings),
             "recommendations": self._generate_recommendations(primary, findings, image_type),
             "analysis_confidence": float(avg_confidence),
+            "heuristic_confidence": float(heuristic_confidence),
+            "dl_confidence": float(dl_confidence),
             "patient_context": history_context if history_context else None,
         }
 
@@ -656,6 +850,70 @@ class AnalysisAgent:
 
         return recs
 
+    def _merge_dl_predictions(self, dl_output, image_type):
+        """Convert DL model predictions into structured findings."""
+        dl_findings = []
+
+        # Chest pathology findings from DenseNet
+        for pred in dl_output.get("chest_pathology_predictions", []):
+            if pred["probability"] > 0.15:
+                risk = "high" if pred["probability"] > 0.7 else "moderate" if pred["probability"] > 0.4 else "low"
+                dl_findings.append({
+                    "finding_type": f"DL: {pred['pathology']}",
+                    "location": "Chest" if image_type == "chest" else "General",
+                    "description": f"CNN model detected {pred['pathology']} with {pred['probability']:.1%} confidence (Source: {pred['model']})",
+                    "confidence": pred["probability"],
+                    "body_part": "Chest",
+                    "image_type": image_type,
+                    "source": "deep_learning",
+                    "model": pred["model"],
+                    "risk_level": risk,
+                })
+
+        # MedMNIST findings
+        for model_name, data in dl_output.get("medmnist_predictions", {}).items():
+            top = data.get("top_prediction", "")
+            conf = data.get("confidence", 0)
+            if conf > 0.3:
+                dl_findings.append({
+                    "finding_type": f"DL: {data['description']}",
+                    "location": "General",
+                    "description": f"Custom CNN classified as '{top}' with {conf:.1%} confidence (Dataset: {model_name})",
+                    "confidence": conf,
+                    "body_part": "General",
+                    "image_type": image_type,
+                    "source": "deep_learning",
+                    "model": f"MediScanCNN ({model_name})",
+                })
+
+        return dl_findings
+
+    def _boost_with_dl(self, differentials, dl_output):
+        """Boost differential diagnosis confidence using DL predictions."""
+        top_pathology = dl_output.get("top_pathology", {})
+        if not top_pathology:
+            return differentials
+
+        dl_name = top_pathology.get("pathology", "").lower()
+        dl_prob = top_pathology.get("probability", 0)
+
+        for diff in differentials:
+            condition_name = diff["condition"].lower()
+            # If DL agrees with heuristic diagnosis, boost confidence
+            if any(word in condition_name for word in dl_name.lower().split("_")):
+                boost = dl_prob * 0.2  # 20% of DL confidence as boost
+                diff["probability"] = min(diff["probability"] + boost, 0.95)
+                diff["reasoning"] += f". DL model corroborates with {dl_prob:.1%} confidence"
+                diff["dl_corroborated"] = True
+            # If DL detects something the heuristic missed, add it
+            elif dl_prob > 0.5 and "normal" in condition_name:
+                diff["probability"] = max(diff["probability"] - 0.1, 0.1)
+                diff["reasoning"] += f". DL model suggests possible pathology ({dl_name})"
+
+        # Re-sort by probability
+        differentials.sort(key=lambda x: x["probability"], reverse=True)
+        return differentials
+
     def _integrate_history(self, patient_history, differentials, findings):
         """Integrate patient medical history into analysis context."""
         parts = []
@@ -695,10 +953,15 @@ class ReportingAgent:
 
     def __init__(self):
         self.name = "Reporting Agent"
-        self.version = "2.0"
+        self.version = "3.0"
 
-    def process(self, vision_output: dict, analysis_output: dict) -> dict:
+    def process(self, vision_output: dict, analysis_output: dict, dl_output: dict = None) -> dict:
         """Generate a final structured report."""
+        agents_used = ["Vision Agent v3.0"]
+        if dl_output and dl_output.get("dl_available"):
+            agents_used.append("DL Classification Agent v3.0")
+        agents_used.extend(["Analysis Agent v3.0", "Reporting Agent v3.0"])
+
         return {
             "agent": self.name,
             "report": {
@@ -714,13 +977,20 @@ class ReportingAgent:
                 "clinical_significance": analysis_output["clinical_significance"],
                 "recommendations": analysis_output["recommendations"],
                 "quality_note": self._quality_assessment(vision_output, analysis_output),
+                "dl_analysis": {
+                    "available": dl_output.get("dl_available", False) if dl_output else False,
+                    "chest_pathology": dl_output.get("chest_pathology_predictions", []) if dl_output else [],
+                    "medmnist": dl_output.get("medmnist_predictions", {}) if dl_output else {},
+                    "models_used": dl_output.get("models_used", []) if dl_output else [],
+                },
                 "disclaimer": "AI-generated preliminary report. Must be reviewed and approved by a qualified radiologist before clinical use.",
             },
             "metadata": {
-                "agents_used": ["Vision Agent v2.0", "Analysis Agent v2.0", "Reporting Agent v2.0"],
+                "agents_used": agents_used,
                 "image_dimensions": vision_output["image_dimensions"],
                 "total_structures_detected": len(vision_output["structures"]),
                 "total_findings": len(analysis_output["findings"]),
+                "dl_models_count": len(dl_output.get("models_used", [])) if dl_output else 0,
             },
         }
 
@@ -752,6 +1022,7 @@ class ReportingAgent:
 # ============================================================================
 
 vision_agent = VisionAgent()
+dl_classification_agent = DLClassificationAgent()
 analysis_agent = AnalysisAgent()
 reporting_agent = ReportingAgent()
 
@@ -763,14 +1034,22 @@ reporting_agent = ReportingAgent()
 @app.get("/api/health")
 async def health():
     """Health check endpoint."""
+    dl_status = model_manager.get_status()
     return {
         "status": "healthy",
-        "version": "2.0",
+        "version": "3.0",
         "system": "MediScan Analyst",
-        "agents": ["Vision Agent", "Analysis Agent", "Reporting Agent"],
-        "models_loaded": 3,
+        "agents": ["Vision Agent", "DL Classification Agent", "Analysis Agent", "Reporting Agent"],
+        "models_loaded": dl_status["ready_count"] + 3,
+        "dl_models": dl_status["ready_count"],
         "ready": True,
     }
+
+
+@app.get("/api/models/status")
+async def models_status():
+    """Get status of all deep learning models."""
+    return model_manager.get_status()
 
 
 @app.post("/api/analyze")
@@ -798,20 +1077,25 @@ async def analyze_image(
         if patient_id:
             patient_history = db.get_patient_history_summary(patient_id)
 
-        # Agent 1: Vision
+        # Agent 1: Vision (OpenCV features)
         logger.info("🔬 Vision Agent processing...")
         vision_result = vision_agent.process(image)
         vision_time = time.time() - start_time
 
-        # Agent 2: Analysis (with patient history context)
-        logger.info("🧠 Analysis Agent processing...")
-        analysis_result = analysis_agent.process(vision_result, patient_history)
-        analysis_time = time.time() - start_time - vision_time
+        # Agent 2: DL Classification (CNN models)
+        logger.info("🤖 DL Classification Agent processing...")
+        dl_result = dl_classification_agent.process(image, vision_result["image_type"])
+        dl_time = time.time() - start_time - vision_time
 
-        # Agent 3: Reporting
+        # Agent 3: Analysis (merges heuristic + DL findings)
+        logger.info("🧠 Analysis Agent processing...")
+        analysis_result = analysis_agent.process(vision_result, patient_history, dl_result)
+        analysis_time = time.time() - start_time - vision_time - dl_time
+
+        # Agent 4: Reporting
         logger.info("📋 Reporting Agent processing...")
-        report_result = reporting_agent.process(vision_result, analysis_result)
-        report_time = time.time() - start_time - vision_time - analysis_time
+        report_result = reporting_agent.process(vision_result, analysis_result, dl_result)
+        report_time = time.time() - start_time - vision_time - dl_time - analysis_time
 
         total_time = time.time() - start_time
 
@@ -823,10 +1107,19 @@ async def analyze_image(
             "model_confidence": {
                 "image_classification": float(vision_result["type_confidence"]),
                 "findings_extraction": float(analysis_result["analysis_confidence"]),
+                "dl_classification": float(dl_result.get("dl_confidence", 0)),
+                "heuristic_analysis": float(analysis_result.get("heuristic_confidence", 0)),
             },
             "ensemble_confidence": float(
                 (vision_result["type_confidence"] + analysis_result["analysis_confidence"]) / 2
             ),
+            "dl_predictions": {
+                "available": dl_result.get("dl_available", False),
+                "chest_pathology": dl_result.get("chest_pathology_predictions", []),
+                "medmnist": dl_result.get("medmnist_predictions", {}),
+                "top_pathology": dl_result.get("top_pathology"),
+                "models_used": dl_result.get("models_used", []),
+            },
             "analysis": {
                 "findings": analysis_result["findings"],
                 "primary_hypothesis": analysis_result["primary_hypothesis"],
@@ -839,6 +1132,7 @@ async def analyze_image(
             "processing_time": float(total_time),
             "agent_timings": {
                 "vision": float(vision_time),
+                "dl_classification": float(dl_time),
                 "analysis": float(analysis_time),
                 "reporting": float(report_time),
             },

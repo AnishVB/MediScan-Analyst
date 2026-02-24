@@ -8,6 +8,7 @@ function DiagnosticReport({ analysisResult, addToast, selectedPatient }) {
   const [showReferral, setShowReferral] = useState(false);
   const [savedScanId, setSavedScanId] = useState(null);
   const analysis = analysisResult?.analysis;
+  const dlPredictions = analysisResult?.dl_predictions;
 
   const API_BASE = import.meta.env.PROD ? "" : "http://localhost:8000";
 
@@ -32,6 +33,7 @@ function DiagnosticReport({ analysisResult, addToast, selectedPatient }) {
       findings: analysis.findings,
       primary_hypothesis: analysis.primary_hypothesis,
       recommendations: analysis.recommendations,
+      dl_predictions: dlPredictions,
       status: approved ? "Approved" : "Pending Review",
     };
     const blob = new Blob([JSON.stringify(report, null, 2)], {
@@ -44,7 +46,14 @@ function DiagnosticReport({ analysisResult, addToast, selectedPatient }) {
     a.click();
     URL.revokeObjectURL(url);
     addToast("📄 Report exported successfully", "success");
-  }, [analysisResult, analysis, approved, selectedPatient, addToast]);
+  }, [
+    analysisResult,
+    analysis,
+    approved,
+    selectedPatient,
+    addToast,
+    dlPredictions,
+  ]);
 
   const handleSaveToPatient = useCallback(async () => {
     if (!selectedPatient) {
@@ -67,6 +76,7 @@ function DiagnosticReport({ analysisResult, addToast, selectedPatient }) {
               analysis: analysisResult.analysis,
               report: analysisResult.report,
               model_confidence: analysisResult.model_confidence,
+              dl_predictions: analysisResult.dl_predictions,
             },
             confidence: analysisResult.ensemble_confidence,
           }),
@@ -102,6 +112,17 @@ function DiagnosticReport({ analysisResult, addToast, selectedPatient }) {
     : riskLevel.toLowerCase().includes("low")
       ? "risk-low"
       : "risk-medium";
+
+  // Separate heuristic and DL findings
+  const heuristicFindings = (analysis.findings || []).filter(
+    (f) =>
+      f.source !== "deep_learning" &&
+      f.finding_type !== "Image Quality Assessment",
+  );
+  const dlFindings = (analysis.findings || []).filter(
+    (f) => f.source === "deep_learning",
+  );
+  const chestPathology = dlPredictions?.chest_pathology || [];
 
   return (
     <div className="report-panel">
@@ -149,8 +170,54 @@ function DiagnosticReport({ analysisResult, addToast, selectedPatient }) {
             Confidence:{" "}
             {Math.round((analysis.primary_hypothesis?.probability || 0) * 100)}%
           </span>
+          {analysis.primary_hypothesis?.dl_corroborated && (
+            <span className="report-tag dl-corr-tag">🤖 DL Corroborated</span>
+          )}
         </div>
       </div>
+
+      {/* CNN Predictions Section */}
+      {chestPathology.length > 0 && (
+        <div className="report-section dl-predictions-section">
+          <div className="report-section-title">
+            🤖 CNN Pathology Predictions
+          </div>
+          <div className="dl-predictions-list">
+            {chestPathology.slice(0, 8).map((pred, i) => (
+              <div key={i} className="dl-pred-item">
+                <div className="dl-pred-header">
+                  <span className="dl-pred-label">{pred.pathology}</span>
+                  <span className="dl-pred-pct">
+                    {Math.round(pred.probability * 100)}%
+                  </span>
+                </div>
+                <div className="dl-pred-bar">
+                  <div
+                    className={`dl-pred-bar-fill ${pred.probability > 0.5 ? "high" : pred.probability > 0.25 ? "medium" : "low"}`}
+                    style={{ width: `${Math.round(pred.probability * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="dl-pred-source">
+            Source: {chestPathology[0]?.model || "DenseNet-121"}
+          </div>
+        </div>
+      )}
+
+      {/* DL Findings */}
+      {dlFindings.length > 0 && (
+        <div className="report-section dl-findings-section">
+          <div className="report-section-title">🧬 Deep Learning Findings</div>
+          {dlFindings.map((f, i) => (
+            <div key={i} className="dl-finding-item">
+              <div className="dl-finding-type">{f.finding_type}</div>
+              <div className="dl-finding-desc">{f.description}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="report-section">
         <div className="report-section-title">Reasoning</div>

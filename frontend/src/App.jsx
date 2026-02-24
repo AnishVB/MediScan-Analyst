@@ -52,11 +52,11 @@ function App() {
     setAgentStage("vision");
     addToast("🔬 Vision Agent analyzing image...", "info");
 
-    await new Promise((r) => setTimeout(r, 1200));
+    await new Promise((r) => setTimeout(r, 800));
 
-    // Stage 2: Analysis Agent
-    setAgentStage("analysis");
-    addToast("🧠 Analysis Agent cross-referencing findings...", "info");
+    // Stage 2: DL Classification Agent
+    setAgentStage("dl_classification");
+    addToast("🤖 DL Classification Agent running CNN models...", "info");
 
     try {
       const formData = new FormData();
@@ -74,14 +74,31 @@ function App() {
 
       const data = await response.json();
 
-      // Stage 3: Reporting Agent
+      // Stage 3: Analysis Agent
+      setAgentStage("analysis");
+      addToast("🧠 Analysis Agent merging heuristic + DL findings...", "info");
+      await new Promise((r) => setTimeout(r, 600));
+
+      // Stage 4: Reporting Agent
       setAgentStage("reporting");
       addToast("📋 Reporting Agent compiling summary...", "info");
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 500));
 
       setAnalysisResult(data);
       setAgentStage("complete");
-      addToast("✅ Analysis complete — please review findings", "success");
+
+      const dlCount = data.dl_predictions?.models_used?.length || 0;
+      if (dlCount > 0) {
+        addToast(
+          `✅ Analysis complete — ${dlCount} DL model(s) used`,
+          "success",
+        );
+      } else {
+        addToast(
+          "✅ Analysis complete (heuristic mode) — train models for DL",
+          "success",
+        );
+      }
     } catch (err) {
       addToast("❌ Analysis failed: " + err.message, "error");
       setAgentStage("idle");
